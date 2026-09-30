@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, Command, FolderKanban, Gauge, LayoutDashboard, Moon, Pause, Play, Settings2, ShieldCheck, Sun } from 'lucide-react'
+import { Activity, Command, FolderKanban, Gauge, LayoutDashboard, Moon, Pause, Play, Settings2, Sun } from 'lucide-react'
 import { Onboarding } from './Onboarding'
 import { OverviewPage } from './pages/OverviewPage'
 import { AppsPage } from './pages/AppsPage'
@@ -130,7 +130,6 @@ export default function App() {
     setSettings((current) => (current ? { ...current, autoStart: enabled } : current))
   }
   const togglePause = () => void window.stilltime.setPaused(!paused)
-  const currentIcon = status?.currentAppId ? icons[status.currentAppId] ?? null : null
 
   const page = useMemo(() => {
     switch (section) {
@@ -202,22 +201,17 @@ export default function App() {
           </button>
           <div className="side-status">
             <i className={`side-status-dot ${paused || status?.idle || !status?.currentApp ? 'is-off' : ''}`} />
-            <div className="side-status-copy">
-              <strong>{paused ? 'Paused' : status?.idle ? 'Away' : status?.currentApp ?? 'Ready'}</strong>
-              <span>{formatDuration(status?.todaySeconds ?? 0)} today</span>
-            </div>
-            {currentIcon && <img className="avatar avatar-image" src={currentIcon} alt="" style={{ width: 22, height: 22 }} />}
+            <span className="side-status-name">{paused ? 'Tracking paused' : status?.idle ? 'Away' : status?.currentApp ?? 'Ready'}</span>
+            <span className="side-status-time">{formatDuration(status?.todaySeconds ?? 0)}</span>
             <button className="icon-button" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
               {paused ? <Play size={13} /> : <Pause size={13} />}
             </button>
           </div>
-          <p className="sidebar-foot"><ShieldCheck size={12} /> Stored only on this device</p>
         </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
-          <span className="topbar-title">{section}</span>
           <div className="topbar-actions">
             <button className="icon-button" onClick={() => void handleAppearance(isDark ? 'light' : 'dark')} aria-label="Toggle appearance" title="Toggle appearance">
               {isDark ? <Sun size={15} /> : <Moon size={15} />}

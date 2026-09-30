@@ -1,6 +1,6 @@
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Card, EmptyState, PageHeader, ProgressBar } from '../components'
+import { EmptyState, PageHeader, ProgressBar } from '../components'
 import { formatDuration } from '../lib'
 import type { ControlSnapshot, LimitTargetType } from '../../../shared/types'
 
@@ -35,9 +35,9 @@ export function LimitsPage({ controls, onSave, onRemove }: {
 
   return (
     <>
-      <PageHeader title="Limits" subtitle="A daily budget per app or category, with a quiet nudge when you reach it" />
+      <PageHeader title="Limits" />
 
-      <Card className="editor-card">
+      <div className="editor-card">
         <form className="editor-form" onSubmit={(event) => void save(event)}>
           <label className="field field-grow">
             <span>APPLIES TO</span>
@@ -75,36 +75,37 @@ export function LimitsPage({ controls, onSave, onRemove }: {
             </button>
           ))}
         </div>
-        <div className="editor-foot">
-          <span>Notifies at 80% and 100%. Nothing is ever blocked.</span>
-        </div>
-      </Card>
+        <div className="editor-foot">Notifies at 80% and 100%. Nothing is ever blocked.</div>
+      </div>
 
-      {controls?.limits.length ? (
-        <div className="limits-list" style={{ marginTop: 14 }}>
-          {controls.limits.map((limit) => {
-            const color = limit.percent >= 100 ? '#FF453A' : limit.percent >= 80 ? '#FF9F0A' : limit.color
-            return (
-              <Card className="limit-row" key={limit.id}>
-                <span className="limit-dot" style={{ background: limit.color }} />
-                <div className="limit-body">
-                  <div className="limit-title">
-                    <strong>{limit.targetName}</strong>
-                    <span className="limit-used">{formatDuration(limit.usedSeconds)} of {formatDuration(limit.dailyLimitSeconds)}</span>
-                  </div>
-                  <ProgressBar percent={limit.percent} color={color} height={5} />
-                </div>
-                <span className={`limit-percent ${limit.percent >= 80 ? 'is-near' : ''}`}>{limit.percent}<small>%</small></span>
-                <button className="ghost-danger" onClick={() => void onRemove(limit)} aria-label={`Remove limit for ${limit.targetName}`}><Trash2 size={14} /></button>
-              </Card>
-            )
-          })}
+      <section className="section">
+        <div className="section-head">
+          <h2>Active limits</h2>
         </div>
-      ) : (
-        <Card className="note-card">
+        {controls?.limits.length ? (
+          <div className="rows">
+            {controls.limits.map((limit) => {
+              const color = limit.percent >= 100 ? '#FF453A' : limit.percent >= 80 ? '#FF9F0A' : limit.color
+              return (
+                <div className="limit-row" key={limit.id}>
+                  <span className="limit-dot" style={{ background: limit.color }} />
+                  <div className="limit-body">
+                    <div className="limit-title">
+                      <strong>{limit.targetName}</strong>
+                      <span className="limit-used">{formatDuration(limit.usedSeconds)} of {formatDuration(limit.dailyLimitSeconds)}</span>
+                    </div>
+                    <ProgressBar percent={limit.percent} color={color} height={4} />
+                  </div>
+                  <span className={`limit-percent ${limit.percent >= 80 ? 'is-near' : ''}`}>{limit.percent}<small>%</small></span>
+                  <button className="ghost-danger" onClick={() => void onRemove(limit)} aria-label={`Remove limit for ${limit.targetName}`}><Trash2 size={14} /></button>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
           <EmptyState title="No limits yet" note="Add a daily budget above and Stilltime will remind you when it matters." />
-        </Card>
-      )}
+        )}
+      </section>
     </>
   )
 }

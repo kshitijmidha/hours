@@ -1,6 +1,6 @@
 import { Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { AppAvatar, Card, EmptyState, PageHeader, Switch } from '../components'
+import { AppAvatar, EmptyState, PageHeader, Switch } from '../components'
 import type { ControlSnapshot } from '../../../shared/types'
 
 export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange }: {
@@ -38,66 +38,66 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
 
   return (
     <>
-      <PageHeader title="Downtime" subtitle="A quiet window where Stilltime reminds you to step away — nothing is blocked" />
+      <PageHeader title="Downtime" />
 
-      <Card className="downtime-card">
-        <div className="downtime-head">
-          <div className="downtime-copy">
-            <strong>Scheduled downtime</strong>
-            <span>Get a gentle notification when you open an app during your quiet hours.</span>
-          </div>
-          <Switch
-            checked={controls?.downtime.enabled ?? false}
-            label="Enable scheduled downtime"
-            onChange={(next) => update(next, start, end)}
-          />
+      <div className="downtime-head">
+        <div className="downtime-copy">
+          <strong>Scheduled downtime</strong>
+          <span>Get a gentle notification when you open an app during your quiet hours.</span>
         </div>
-        <div className="timeline">
-          {hours.map((active, hour) => <span key={hour} className={active ? 'is-active' : ''} />)}
-          <i className="timeline-now" style={{ left: `${nowPercent}%` }} title="Current time" />
-        </div>
-        <div className="timeline-labels">
-          <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
-        </div>
-        <div className="schedule">
-          <label className="field">
-            <span>STARTS</span>
-            <input type="time" value={start} onChange={(event) => { setStart(event.target.value); update(Boolean(controls?.downtime.enabled), event.target.value, end) }} />
-          </label>
-          <span className="schedule-to">to</span>
-          <label className="field">
-            <span>ENDS</span>
-            <input type="time" value={end} onChange={(event) => { setEnd(event.target.value); update(Boolean(controls?.downtime.enabled), start, event.target.value) }} />
-          </label>
-        </div>
-      </Card>
-
-      <div className="section-head">
-        <div>
-          <h2>Always allowed</h2>
-          <p>Keep the essentials reachable during downtime.</p>
-        </div>
-        <label className="search search-compact">
-          <Search size={14} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an app" />
-          {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={13} /></button>}
+        <Switch
+          checked={controls?.downtime.enabled ?? false}
+          label="Enable scheduled downtime"
+          onChange={(next) => update(next, start, end)}
+        />
+      </div>
+      <div className="timeline">
+        {hours.map((active, hour) => <span key={hour} className={active ? 'is-active' : ''} />)}
+        <i className="timeline-now" style={{ left: `${nowPercent}%` }} title="Current time" />
+      </div>
+      <div className="timeline-labels">
+        <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
+      </div>
+      <div className="schedule">
+        <label className="field">
+          <span>STARTS</span>
+          <input type="time" value={start} onChange={(event) => { setStart(event.target.value); update(Boolean(controls?.downtime.enabled), event.target.value, end) }} />
+        </label>
+        <span className="schedule-to">to</span>
+        <label className="field">
+          <span>ENDS</span>
+          <input type="time" value={end} onChange={(event) => { setEnd(event.target.value); update(Boolean(controls?.downtime.enabled), start, event.target.value) }} />
         </label>
       </div>
 
-      <Card className="list-card list-card-padded">
-        {apps.length ? apps.map((app) => {
-          const allowed = controls?.alwaysAllowedIds.includes(app.id) ?? false
-          return (
-            <div className="allow-row" key={app.id}>
-              <AppAvatar name={app.name} category={app.category} icon={icons[app.id]} size={26} />
-              <div className="allow-copy">
-                <strong>{app.name}</strong>
-              </div>
-              <Switch checked={allowed} label={`Always allow ${app.name}`} onChange={(next) => void onAllowChange(app.id, next)} />
-            </div>
-          )
-        }) : <EmptyState title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Stilltime has seen them.'} />}
-      </Card>
+      <section className="section">
+        <div className="section-head">
+          <h2>Always allowed</h2>
+          <label className="search search-compact">
+            <Search size={14} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an app" />
+            {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={13} /></button>}
+          </label>
+        </div>
+        {apps.length ? (
+          <div className="rows">
+            {apps.map((app) => {
+              const allowed = controls?.alwaysAllowedIds.includes(app.id) ?? false
+              return (
+                <div className="allow-row" key={app.id}>
+                  <AppAvatar name={app.name} category={app.category} icon={icons[app.id]} size={24} />
+                  <div className="allow-copy">
+                    <strong>{app.name}</strong>
+                  </div>
+                  <Switch checked={allowed} label={`Always allow ${app.name}`} onChange={(next) => void onAllowChange(app.id, next)} />
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <EmptyState title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Stilltime has seen them.'} />
+        )}
+      </section>
     </>
   )
 }

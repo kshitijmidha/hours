@@ -3,17 +3,10 @@ import type { ReactNode } from 'react'
 import { CATEGORY_COLORS, formatDuration, initials } from './lib'
 import type { CategoryName, TimeRange } from '../../shared/types'
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`card ${className}`}>{children}</section>
-}
-
-export function PageHeader({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="page-header">
-      <div className="page-header-copy">
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
+      <h1 className="page-title">{title}</h1>
       {children && <div className="page-header-actions">{children}</div>}
     </div>
   )
@@ -55,7 +48,7 @@ export function ProgressBar({ percent, color, height = 6 }: { percent: number; c
   )
 }
 
-export function AppAvatar({ name, category, icon, size = 28 }: { name: string; category: CategoryName; icon?: string | null; size?: number }) {
+export function AppAvatar({ name, category, icon, size = 26 }: { name: string; category: CategoryName; icon?: string | null; size?: number }) {
   if (icon) {
     return <span className="avatar avatar-image" style={{ width: size, height: size }}><img src={icon} alt="" /></span>
   }
@@ -84,39 +77,36 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 
 export function DeltaChip({ tone }: { tone: 'above' | 'below' | 'even' }) {
   const Icon = tone === 'above' ? ArrowUpRight : tone === 'below' ? ArrowDownRight : Minus
-  return <span className={`delta-chip delta-${tone}`}><Icon size={13} /></span>
+  return <span className={`delta-chip delta-${tone}`}><Icon size={12} /></span>
 }
 
-export function StatBlock({ label, value, note }: { label: string; value: string; note: string }) {
+export function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="stat-block">
+    <div className="metric">
       <span>{label}</span>
       <strong>{value}</strong>
-      <small>{note}</small>
     </div>
   )
 }
 
-export function AppRow({ name, category, icon, seconds, maxSeconds, trailing }: {
+export function AppRow({ name, category, icon, seconds, maxSeconds }: {
   name: string
   category: CategoryName
   icon?: string | null
   seconds: number
   maxSeconds: number
-  trailing?: ReactNode
 }) {
   const color = CATEGORY_COLORS[category] ?? CATEGORY_COLORS.Other
   return (
-    <div className="app-row">
+    <div className="row">
       <AppAvatar name={name} category={category} icon={icon} />
-      <div className="app-row-body">
-        <div className="app-row-title">
+      <div className="row-body">
+        <div className="row-title">
           <strong>{name}</strong>
         </div>
         <ProgressBar percent={maxSeconds > 0 ? (seconds / maxSeconds) * 100 : 0} color={color} height={4} />
       </div>
-      <span className="app-row-time">{formatDuration(seconds)}</span>
-      {trailing}
+      <span className="row-time">{formatDuration(seconds)}</span>
     </div>
   )
 }

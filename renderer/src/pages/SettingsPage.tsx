@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, PageHeader, Switch } from '../components'
+import { PageHeader, Switch } from '../components'
 import type { AppearancePreference, AppSettings } from '../../../shared/types'
 
 export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoStart, onSeedDemo, onRemoveDemo, onExport, onDeleteAll }: {
@@ -29,10 +29,10 @@ export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoSt
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Small choices — all kept on this PC" />
+      <PageHeader title="Settings" />
 
       <div className="settings-stack">
-        <Card className="setting-row setting-row-split">
+        <div className="setting-row setting-row-split">
           <div className="setting-copy-inline">
             <strong>Appearance</strong>
             <span>Follow Windows, or pick a light that suits you.</span>
@@ -44,25 +44,25 @@ export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoSt
               </button>
             ))}
           </div>
-        </Card>
+        </div>
 
-        <Card className="setting-row">
+        <div className="setting-row">
           <div className="setting-copy-inline">
             <strong>Start with Windows</strong>
             <span>Launches quietly into the tray when you log in, so tracking never misses a day.</span>
           </div>
           <Switch checked={settings?.autoStart ?? true} label="Start Stilltime with Windows" onChange={(next) => void onAutoStart(next)} />
-        </Card>
+        </div>
 
-        <Card className="setting-row">
+        <div className="setting-row">
           <div className="setting-copy-inline">
             <strong>Tracking</strong>
             <span>{paused ? 'Paused — nothing is being recorded right now.' : 'Running quietly. Idle time, locks, and sleep are skipped.'}</span>
           </div>
           <button className="ghost" onClick={onPause}>{paused ? 'Resume' : 'Pause'}</button>
-        </Card>
+        </div>
 
-        <Card className="setting-row">
+        <div className="setting-row">
           <div className="setting-copy-inline">
             <strong>Sample activity</strong>
             <span>Two weeks of realistic pretend usage, handy for exploring the dashboard.</span>
@@ -71,33 +71,31 @@ export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoSt
             <button className="ghost" disabled={busy} onClick={() => void run(onSeedDemo)}>Add sample</button>
             <button className="ghost" disabled={busy} onClick={() => void run(onRemoveDemo)}>Remove</button>
           </div>
-        </Card>
+        </div>
 
-        <Card className="setting-row">
+        <div className="setting-row">
           <div className="setting-copy-inline">
             <strong>Export history</strong>
             <span>Save every session as a spreadsheet-friendly CSV file.</span>
           </div>
           <button className="ghost" onClick={() => void run(async () => flash((await onExport()) ? 'Export saved.' : 'Export cancelled.'))}>Export CSV</button>
-        </Card>
+        </div>
 
-        <Card className="setting-row">
+        <div className="setting-row">
           <div className="setting-copy-inline">
             <strong>Delete all data</strong>
             <span>Erase sessions, apps, limits, and always-allowed lists from this PC.</span>
           </div>
           <button className="danger" onClick={() => setConfirming(true)}>Delete</button>
-        </Card>
+        </div>
       </div>
 
       {notice && <p className="notice">{notice}</p>}
 
-      <Card className="about-card">
-        <div>
-          <strong>Private by design</strong>
-          <p>Stilltime reads only the foreground app and idle timer through Windows APIs, and stores everything in a local SQLite database. No accounts, no cloud, no telemetry. Version {settings?.version ?? '—'}.</p>
-        </div>
-      </Card>
+      <p className="about-text">
+        Private by design — Stilltime reads only the foreground app and idle timer through Windows APIs, and stores
+        everything in a local SQLite database. No accounts, no cloud, no telemetry. Version {settings?.version ?? '—'}.
+      </p>
 
       {confirming && (
         <div className="modal-backdrop" role="presentation">

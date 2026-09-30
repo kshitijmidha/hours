@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AppRow, Card, DateStepper, DeltaChip, EmptyState, LoadingRows, PageHeader, SegmentedControl, StatBlock } from '../components'
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { AppRow, DateStepper, DeltaChip, EmptyState, LoadingRows, Metric, PageHeader, SegmentedControl } from '../components'
 import { CATEGORY_COLORS, CATEGORY_NAMES, comparison, formatDuration, periodLabel, shiftDate, todayKey } from '../lib'
 import type { DashboardData, TimeRange } from '../../../shared/types'
 
@@ -64,7 +64,7 @@ function TrendBars({ data }: { data: DashboardData }) {
       <span className="hero-trend-label">LAST 7 DAYS</span>
       <div className="hero-bars">
         {data.trend.map((point, index) => {
-          const height = Math.max(4, Math.round((point.seconds / max) * 56))
+          const height = Math.max(4, Math.round((point.seconds / max) * 50))
           const isCurrent = index === data.trend.length - 1
           const isEmpty = point.seconds < 60
           return (
@@ -102,10 +102,7 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
 
   return (
     <>
-      <PageHeader
-        title={<>Still<span>time</span></>}
-        subtitle={`${periodLabel(selectedDate, range)} · where your attention went`}
-      >
+      <PageHeader title="Overview">
         <DateStepper
           label={periodLabel(selectedDate, range)}
           onBack={() => onDateChange(shiftDate(selectedDate, range === 'day' ? -1 : -7))}
@@ -123,8 +120,7 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
       )}
 
       <section className="hero">
-        <div className="hero-copy">
-          <span className="hero-overline">TOTAL SCREEN TIME</span>
+        <div>
           {data ? (
             <div className="hero-time">{formatDuration(data.totalSeconds)}</div>
           ) : (
@@ -138,85 +134,81 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
         {data ? <TrendBars data={data} /> : <span className="skeleton skeleton-strip" />}
       </section>
 
-      <div className="stats-row">
-        <StatBlock label="DAILY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} note="Across the last 7 days" />
-        <StatBlock label="APPS USED" value={data ? `${data.appCount}` : '—'} note={range === 'day' ? 'In this day' : 'This week'} />
+      <div className="metrics">
+        <Metric label="7-DAY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} />
+        <Metric label="APPS USED" value={data ? `${data.appCount}` : '—'} />
       </div>
 
-      <div className="grid-2">
-        <Card className="chart-card">
-          <div className="card-head">
-            <h2>{range === 'day' ? 'Usage by hour' : 'Usage by day'}</h2>
-          </div>
-          {data && hasActivity ? (
-            <>
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 6, right: 4, left: -18, bottom: 0 }} barCategoryGap={range === 'day' ? '26%' : '38%'}>
-                    <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 6" />
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={range === 'day' ? 2 : 0} dy={8} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickFormatter={(value: number) => formatDuration(value, 'coarse')} width={42} tickCount={4} />
-                    <Tooltip content={<UsageTooltip />} cursor={{ fill: 'var(--chart-hover)', radius: 4 }} />
-                    {CATEGORY_NAMES.map((category) => (
-                      <Bar
-                        key={category}
-                        dataKey={category}
-                        stackId="usage"
-                        fill={CATEGORY_COLORS[category]}
-                        maxBarSize={range === 'day' ? 16 : 40}
-                        animationDuration={450}
-                        shape={(props: unknown) => <RoundedBar {...(props as BarShapeProps)} />}
-                      />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              {topCategories.length > 0 && (
-                <div className="legend">
-                  {topCategories.slice(0, 4).map((item) => (
-                    <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
+      <section className="section">
+        <div className="section-head">
+          <h2>{range === 'day' ? 'Usage by hour' : 'Usage by day'}</h2>
+          {data && hasActivity && <span className="section-note">{formatDuration(data.totalSeconds)} total</span>}
+        </div>
+        {data && hasActivity ? (
+          <>
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barCategoryGap={range === 'day' ? '28%' : '40%'}>
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 10.5 }} interval={range === 'day' ? 2 : 0} dy={6} />
+                  <Tooltip content={<UsageTooltip />} cursor={{ fill: 'var(--chart-grid)', radius: 4 }} />
+                  {CATEGORY_NAMES.map((category) => (
+                    <Bar
+                      key={category}
+                      dataKey={category}
+                      stackId="usage"
+                      fill={CATEGORY_COLORS[category]}
+                      maxBarSize={range === 'day' ? 18 : 44}
+                      animationDuration={450}
+                      shape={(props: unknown) => <RoundedBar {...(props as BarShapeProps)} />}
+                    />
                   ))}
-                </div>
-              )}
-            </>
-          ) : data ? (
-            <EmptyState title="Nothing recorded yet" note="Stilltime runs quietly in your tray — activity appears within a minute of using any app." />
-          ) : (
-            <LoadingRows rows={5} />
-          )}
-        </Card>
-
-        <Card className="most-used-card">
-          <div className="card-head">
-            <h2>Most used</h2>
-          </div>
-          {data ? (
-            data.apps.length ? (
-              <div className="most-used-list">
-                {data.apps.slice(0, 5).map((app) => (
-                  <AppRow
-                    key={app.id}
-                    name={app.name}
-                    category={app.category}
-                    icon={icons[app.id]}
-                    seconds={app.seconds}
-                    maxSeconds={maxAppSeconds}
-                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {topCategories.length > 0 && (
+              <div className="legend">
+                {topCategories.slice(0, 4).map((item) => (
+                  <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
                 ))}
               </div>
-            ) : (
-              <EmptyState title="No apps yet" note="Spend a few minutes in any app and it shows up instantly." />
-            )
-          ) : (
-            <LoadingRows rows={4} />
-          )}
-        </Card>
-      </div>
+            )}
+          </>
+        ) : data ? (
+          <EmptyState title="Nothing recorded yet" note="Stilltime runs quietly in your tray — activity appears within a minute of using any app." />
+        ) : (
+          <LoadingRows rows={5} />
+        )}
+      </section>
 
-      <Card className="categories-card">
-        <div className="card-head">
+      <section className="section">
+        <div className="section-head">
+          <h2>Most used</h2>
+        </div>
+        {data ? (
+          data.apps.length ? (
+            <div className="rows">
+              {data.apps.slice(0, 5).map((app) => (
+                <AppRow
+                  key={app.id}
+                  name={app.name}
+                  category={app.category}
+                  icon={icons[app.id]}
+                  seconds={app.seconds}
+                  maxSeconds={maxAppSeconds}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No apps yet" note="Spend a few minutes in any app and it shows up instantly." />
+          )
+        ) : (
+          <LoadingRows rows={4} />
+        )}
+      </section>
+
+      <section className="section">
+        <div className="section-head">
           <h2>By category</h2>
-          <span className="card-note">{data ? formatDuration(data.totalSeconds) : '—'} total</span>
         </div>
         {data && topCategories.length ? (
           <>
@@ -237,9 +229,9 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
             </div>
           </>
         ) : (
-          <p className="card-note">Categories appear here once you start using apps.</p>
+          <p className="section-note">Categories appear here once you start using apps.</p>
         )}
-      </Card>
+      </section>
     </>
   )
 }
