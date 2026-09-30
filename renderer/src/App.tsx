@@ -134,8 +134,7 @@ export default function App() {
     setSettings((current) => (current ? { ...current, autoStart: enabled } : current))
   }
   const togglePause = () => void window.stilltime.setPaused(!paused)
-
-  const statusText = paused ? 'Tracking paused' : status?.idle ? 'Away from keyboard' : status?.currentApp ?? 'Tracking'
+  const currentIcon = status?.currentAppId ? icons[status.currentAppId] ?? null : null
 
   const page = useMemo(() => {
     switch (section) {
@@ -210,17 +209,26 @@ export default function App() {
             <Settings2 size={16} strokeWidth={section === 'Settings' ? 2.2 : 1.8} />
             <span>Settings</span>
           </button>
-          <div className="status-block">
-            <div className="status-line">
-              <i className={`status-dot ${paused ? 'is-paused' : ''}`} />
-              <span>{statusText}</span>
-              <button className="icon-button" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
+          <div className="live-card">
+            <div className="live-top">
+              <span className="live-label">RIGHT NOW</span>
+              <button className="live-pause" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
                 {paused ? <Play size={13} /> : <Pause size={13} />}
               </button>
             </div>
-            <div className="status-total">
+            <div className="live-app">
+              {currentIcon
+                ? <img className="live-icon" src={currentIcon} alt="" />
+                : <span className={`live-icon live-placeholder ${paused || status?.idle || !status?.currentApp ? 'is-paused' : ''}`}><Activity size={14} /></span>}
+              <div className="live-copy">
+                <strong>{paused ? 'Tracking paused' : status?.idle ? 'Away from keyboard' : status?.currentApp ?? 'Waiting for activity'}</strong>
+                <span>{paused ? 'Nothing is being recorded' : status?.idle ? 'Counting resumes on input' : status?.currentApp ? 'Foreground app' : 'Stilltime is watching quietly'}</span>
+              </div>
+            </div>
+            <div className="live-total">
               <strong>{formatDuration(status?.todaySeconds ?? 0)}</strong>
               <span>tracked today</span>
+              <i className={`live-dot ${paused ? 'is-off' : ''}`} />
             </div>
           </div>
           <p className="sidebar-foot"><ShieldCheck size={12} /> Stored only on this device</p>

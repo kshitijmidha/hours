@@ -69,6 +69,19 @@ export function LimitsPage({ controls, onSave, onRemove }: {
           </label>
           <button className="primary" type="submit" disabled={!canSave || busy}><Plus size={14} /> Add limit</button>
         </form>
+        <div className="preset-row">
+          <span>QUICK PICKS</span>
+          {[30, 60, 120, 180, 240].map((preset) => (
+            <button
+              type="button"
+              key={preset}
+              className={`preset ${minutesValue === preset ? 'is-active' : ''}`}
+              onClick={() => setMinutes(String(preset))}
+            >
+              {preset < 60 ? `${preset}m` : `${preset / 60}h`}
+            </button>
+          ))}
+        </div>
         <div className="editor-foot">
           <span><i className="threshold threshold-80" /> Heads-up at 80%</span>
           <span><i className="threshold threshold-100" /> Limit reached at 100%</span>

@@ -88,10 +88,10 @@ export function DeltaChip({ tone }: { tone: 'above' | 'below' | 'even' }) {
   return <span className={`delta-chip delta-${tone}`}><Icon size={13} /></span>
 }
 
-export function StatCard({ icon, label, value, note }: { icon: ReactNode; label: string; value: string; note: string }) {
+export function StatCard({ icon, label, value, note, tone = 'blue' }: { icon: ReactNode; label: string; value: string; note: string; tone?: 'blue' | 'violet' | 'green' }) {
   return (
     <Card className="stat-card">
-      <span className="stat-icon">{icon}</span>
+      <span className={`stat-icon tone-${tone}`}>{icon}</span>
       <div className="stat-copy">
         <span className="stat-label">{label}</span>
         <strong>{value}</strong>

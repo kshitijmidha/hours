@@ -16,6 +16,7 @@ export function CategoriesPage({ data, directory }: { data: DashboardData | null
           const usage = data?.categories.find((item) => item.name === name)
           const appCount = directory.filter((entry) => entry.category === name).length
           const color = CATEGORY_COLORS[name]
+          const topApp = (data?.apps ?? []).filter((app) => app.category === name).sort((a, b) => b.seconds - a.seconds)[0]
           return (
             <Card className="category-tile" key={name}>
               <div className="category-tile-top">
@@ -26,6 +27,9 @@ export function CategoriesPage({ data, directory }: { data: DashboardData | null
               <span className="category-tile-time">{formatDuration(usage?.seconds ?? 0)}</span>
               <ProgressBar percent={usage?.percent ?? 0} color={color} height={6} />
               <small>{describe(usage?.seconds ?? 0, usage?.percent ?? 0)}</small>
+              {topApp && (
+                <span className="category-top-app"><i style={{ background: color }} />Top: {topApp.name} · {formatDuration(topApp.seconds)}</span>
+              )}
             </Card>
           )
         })}

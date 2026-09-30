@@ -1,9 +1,9 @@
-import { Activity, BarChart3, Clock3, Command, Sparkles, Trash2 } from 'lucide-react'
+import { Activity, BarChart3, Clock3, Command, Sparkles, Trash2, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AppRow, Card, DateStepper, DeltaChip, EmptyState, LoadingRows, PageHeader, ProgressBar, SegmentedControl, StatCard } from '../components'
+import { AppRow, Card, DateStepper, DeltaChip, EmptyState, LoadingRows, PageHeader, SegmentedControl, StatCard } from '../components'
 import { CATEGORY_COLORS, CATEGORY_NAMES, comparison, formatDuration, periodLabel, shiftDate, todayKey } from '../lib'
-import type { CategoryName, DashboardData, TimeRange, TrackerStatus } from '../../../shared/types'
+import type { DashboardData, TimeRange, TrackerStatus } from '../../../shared/types'
 
 interface ChartRow {
   label: string
@@ -58,19 +58,20 @@ function UsageTooltip({ active, payload, label }: { active?: boolean; payload?: 
   )
 }
 
-function TrendStrip({ data }: { data: DashboardData }) {
+function TrendBars({ data }: { data: DashboardData }) {
   const max = Math.max(60, ...data.trend.map((point) => point.seconds))
   return (
-    <div className="trend-strip">
-      <span className="trend-strip-label">LAST 7 DAYS</span>
-      <div className="trend-bars">
+    <div className="hero-trend">
+      <span className="hero-trend-label">LAST 7 DAYS</span>
+      <div className="hero-bars">
         {data.trend.map((point, index) => {
-          const height = Math.max(4, Math.round((point.seconds / max) * 58))
+          const height = Math.max(4, Math.round((point.seconds / max) * 62))
           const isCurrent = index === data.trend.length - 1
+          const isEmpty = point.seconds < 60
           return (
-            <div className="trend-bar-slot" key={point.date} title={`${point.date} · ${formatDuration(point.seconds)}`}>
-              <span className={`trend-bar ${isCurrent ? 'is-current' : ''}`} style={{ height }} />
-              <span className="trend-bar-label">{point.label.slice(0, 1)}</span>
+            <div className={`hero-bar-slot ${isEmpty ? 'is-empty' : ''}`} key={point.date} title={`${point.date} · ${formatDuration(point.seconds)}`}>
+              <span className={`hero-bar ${isCurrent ? 'is-current' : ''}`} style={{ height: isEmpty ? 4 : height }} />
+              <span className="hero-bar-label">{point.label.slice(0, 1)}</span>
             </div>
           )
         })}
@@ -100,7 +101,17 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
   const topCategories = data?.categories.filter((item) => item.seconds > 0) ?? []
   const hasActivity = Boolean(data && data.totalSeconds > 0)
   const forwardDisabled = selectedDate >= todayKey()
-  const current = status && !status.tracking ? 'Tracking paused' : status?.idle ? 'Away from keyboard' : status?.currentApp ?? null
+
+  const peak = useMemo(() => {
+    if (!data || data.totalSeconds <= 0) return null
+    return data.buckets.reduce((best, bucket) => (bucket.totalSeconds > best.totalSeconds ? bucket : best), data.buckets[0])
+  }, [data])
+
+  const currentState = status && !status.tracking
+    ? 'Tracking paused'
+    : status?.idle
+      ? 'Away from keyboard'
+      : status?.currentApp ?? 'Ready for whatever is next'
 
   return (
     <>
@@ -127,6 +138,8 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
       )}
 
       <section className="hero">
+        <span className="hero-blob hero-blob-a" aria-hidden="true" />
+        <span className="hero-blob hero-blob-b" aria-hidden="true" />
         <div className="hero-copy">
           <span className="hero-overline">TOTAL SCREEN TIME</span>
           {data ? (
@@ -138,14 +151,23 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
             <DeltaChip tone={delta?.tone ?? 'even'} />
             <span>{delta?.text ?? '—'}</span>
           </div>
+          {data && (
+            <div className="hero-substats">
+              <span><em>7-day average</em><strong>{formatDuration(data.averageSeconds)}</strong></span>
+              <span className="hero-subdiv" />
+              <span><em>Most used</em><strong>{data.apps[0]?.name ?? '—'}</strong></span>
+              <span className="hero-subdiv" />
+              <span><em>Right now</em><strong>{currentState}</strong></span>
+            </div>
+          )}
         </div>
-        {data ? <TrendStrip data={data} /> : <div className="skeleton skeleton-strip" />}
+        {data ? <TrendBars data={data} /> : <span className="skeleton skeleton-strip" />}
       </section>
 
       <div className="stats-row">
-        <StatCard icon={<BarChart3 size={16} />} label="DAILY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} note="Trailing 7 days" />
-        <StatCard icon={<Command size={16} />} label="APPS USED" value={data ? `${data.appCount}` : '—'} note={data?.startDate === data?.endDate ? 'in this day' : 'this week'} />
-        <StatCard icon={<Activity size={16} />} label="RIGHT NOW" value={current ?? 'Ready'} note={status?.idle ? 'Tracking pauses while you’re away' : 'Foreground app'} />
+        <StatCard tone="blue" icon={<BarChart3 size={17} />} label="DAILY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} note="Across the last 7 days" />
+        <StatCard tone="violet" icon={<Command size={17} />} label="APPS USED" value={data ? `${data.appCount}` : '—'} note={range === 'day' ? 'in this day' : 'this week'} />
+        <StatCard tone="green" icon={<Activity size={17} />} label="FOCUS NOW" value={currentState} note={status?.idle ? 'Counting resumes when you’re back' : 'Foreground app, updated live'} />
       </div>
 
       <div className="grid-2">
@@ -155,13 +177,16 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
               <span className="section-label">ACTIVITY</span>
               <h2>{range === 'day' ? 'Usage by hour' : 'Usage by day'}</h2>
             </div>
-            {hasActivity && (
-              <div className="legend">
-                {topCategories.slice(0, 4).map((item) => (
-                  <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
-                ))}
-              </div>
-            )}
+            <div className="chart-tools">
+              {peak && <span className="peak-pill"><TrendingUp size={12} /> {range === 'day' ? `Busiest around ${peak.label}` : `Busiest ${peak.label}`}</span>}
+              {topCategories.length > 0 && (
+                <div className="legend">
+                  {topCategories.slice(0, 3).map((item) => (
+                    <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           {data && hasActivity ? (
             <div className="chart-wrap">
@@ -186,7 +211,7 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
               </ResponsiveContainer>
             </div>
           ) : data ? (
-            <EmptyState icon={<BarClock />} title="Nothing recorded yet" note="Leave this running in your tray — your activity will appear within a minute of using any app." />
+            <EmptyState icon={<Clock3 size={18} />} title="Nothing recorded yet" note="Leave Stilltime running in your tray — activity appears within a minute of using any app." />
           ) : (
             <LoadingRows rows={5} />
           )}
@@ -198,12 +223,21 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
               <span className="section-label">WHERE TIME GOES</span>
               <h2>Most used</h2>
             </div>
+            {data && data.apps.length > 0 && <span className="card-note">share of {range === 'day' ? 'day' : 'week'}</span>}
           </div>
           {data ? (
             data.apps.length ? (
               <div className="most-used-list">
                 {data.apps.slice(0, 5).map((app) => (
-                  <AppRow key={app.id} name={app.name} category={app.category} icon={icons[app.id]} seconds={app.seconds} maxSeconds={maxAppSeconds} />
+                  <AppRow
+                    key={app.id}
+                    name={app.name}
+                    category={app.category}
+                    icon={icons[app.id]}
+                    seconds={app.seconds}
+                    maxSeconds={maxAppSeconds}
+                    trailing={<span className="app-share">{data.totalSeconds > 0 ? Math.round((app.seconds / data.totalSeconds) * 100) : 0}%</span>}
+                  />
                 ))}
               </div>
             ) : (
@@ -246,20 +280,5 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
         )}
       </Card>
     </>
-  )
-}
-
-function BarClock() {
-  return <Clock3 size={18} />
-}
-
-export function CategoryShareRow({ name, seconds, percent, color }: { name: CategoryName; seconds: number; percent: number; color: string }) {
-  return (
-    <div className="share-row">
-      <i style={{ background: color }} />
-      <span>{name}</span>
-      <ProgressBar percent={percent} color={color} />
-      <strong>{formatDuration(seconds)}</strong>
-    </div>
   )
 }

@@ -22,6 +22,20 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
   const apps = (controls?.apps ?? []).filter((app) => app.name.toLowerCase().includes(query.trim().toLowerCase()))
   const update = (enabled: boolean, nextStart: string, nextEnd: string) => void onScheduleChange(enabled, nextStart, nextEnd)
 
+  const minutes = (value: string) => {
+    const [hour, minute] = value.split(':').map(Number)
+    return hour * 60 + minute
+  }
+  const startAt = minutes(start)
+  const endAt = minutes(end)
+  const now = new Date()
+  const nowPercent = ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100
+  const hours = Array.from({ length: 24 }, (_, hour) => {
+    const value = hour * 60
+    if (startAt === endAt) return true
+    return startAt < endAt ? value >= startAt && value < endAt : value >= startAt || value < endAt
+  })
+
   return (
     <>
       <PageHeader eyebrow="SPACE TO REST" title="Downtime" subtitle="A quiet window where Stilltime reminds you to step away — nothing is blocked" />
@@ -38,6 +52,13 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
             label="Enable scheduled downtime"
             onChange={(next) => update(next, start, end)}
           />
+        </div>
+        <div className="timeline">
+          {hours.map((active, hour) => <span key={hour} className={active ? 'is-active' : ''} />)}
+          <i className="timeline-now" style={{ left: `${nowPercent}%` }} title="Current time" />
+        </div>
+        <div className="timeline-labels">
+          <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
         </div>
         <div className="schedule">
           <label className="field">
