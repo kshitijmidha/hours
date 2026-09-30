@@ -195,6 +195,21 @@ export class Store {
       })
       reset()
     }
+    // Forget any history recorded for Stilltime itself (from older builds that tracked everything).
+    const selfApps = this.db.prepare(`
+      SELECT id FROM apps WHERE LOWER(executable_path) = ? OR LOWER(name) = 'stilltime'
+    `).all(process.execPath.toLowerCase()) as Array<{ id: number }>
+    if (selfApps.length) {
+      const removeSelf = this.db.transaction(() => {
+        for (const { id } of selfApps) {
+          this.db.prepare('DELETE FROM sessions WHERE app_id = ?').run(id)
+          this.db.prepare('DELETE FROM limits WHERE target_type = ? AND target_id = ?').run('app', id)
+          this.db.prepare('DELETE FROM always_allowed WHERE app_id = ?').run(id)
+          this.db.prepare('DELETE FROM apps WHERE id = ?').run(id)
+        }
+      })
+      removeSelf()
+    }
     for (const row of this.db.prepare('SELECT id, executable_path FROM apps').all() as Array<{ id: number; executable_path: string }>) {
       this.appCache.set(row.executable_path.toLowerCase(), row.id)
     }

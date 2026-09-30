@@ -78,6 +78,12 @@ export class ActivityTracker {
     void reason
   }
 
+  private isSelf(processId: number, path: string | null) {
+    if (processId === process.pid) return true
+    if (!path) return false
+    return path.toLowerCase() === process.execPath.toLowerCase()
+  }
+
   private async poll(lifecycle: number) {
     if (this.paused || this.polling) return
     this.polling = true
@@ -99,6 +105,14 @@ export class ActivityTracker {
       if (this.paused || this.lifecycle !== lifecycle) return
       if (!foreground) {
         this.endSession(Date.now())
+        this.emit()
+        return
+      }
+      // Stilltime should never count its own window: it is not something you "use".
+      if (this.isSelf(foreground.processId, foreground.path)) {
+        this.endSession(Date.now())
+        this.currentApp = null
+        this.currentAppId = null
         this.emit()
         return
       }
