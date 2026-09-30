@@ -1,4 +1,4 @@
-import { Clock3, Moon, Search, Sparkles, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AppAvatar, Card, EmptyState, PageHeader, Switch } from '../components'
 import type { ControlSnapshot } from '../../../shared/types'
@@ -38,11 +38,10 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
 
   return (
     <>
-      <PageHeader eyebrow="SPACE TO REST" title="Downtime" subtitle="A quiet window where Stilltime reminds you to step away — nothing is blocked" />
+      <PageHeader title="Downtime" subtitle="A quiet window where Stilltime reminds you to step away — nothing is blocked" />
 
       <Card className="downtime-card">
         <div className="downtime-head">
-          <span className="editor-icon"><Moon size={16} /></span>
           <div className="downtime-copy">
             <strong>Scheduled downtime</strong>
             <span>Get a gentle notification when you open an app during your quiet hours.</span>
@@ -70,13 +69,11 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
             <span>ENDS</span>
             <input type="time" value={end} onChange={(event) => { setEnd(event.target.value); update(Boolean(controls?.downtime.enabled), start, event.target.value) }} />
           </label>
-          <span className="schedule-note"><Clock3 size={13} /> Quiet hours {start} – {end}</span>
         </div>
       </Card>
 
       <div className="section-head">
         <div>
-          <span className="section-label">EXCEPTIONS</span>
           <h2>Always allowed</h2>
           <p>Keep the essentials reachable during downtime.</p>
         </div>
@@ -87,20 +84,19 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
         </label>
       </div>
 
-      <Card className="list-card">
+      <Card className="list-card list-card-padded">
         {apps.length ? apps.map((app) => {
           const allowed = controls?.alwaysAllowedIds.includes(app.id) ?? false
           return (
             <div className="allow-row" key={app.id}>
-              <AppAvatar name={app.name} category={app.category} icon={icons[app.id]} size={30} />
+              <AppAvatar name={app.name} category={app.category} icon={icons[app.id]} size={26} />
               <div className="allow-copy">
                 <strong>{app.name}</strong>
-                <span><i style={{ background: app.categoryColor }} />{app.category}</span>
               </div>
               <Switch checked={allowed} label={`Always allow ${app.name}`} onChange={(next) => void onAllowChange(app.id, next)} />
             </div>
           )
-        }) : <EmptyState icon={<Sparkles size={18} />} title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Stilltime has seen them.'} />}
+        }) : <EmptyState title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Stilltime has seen them.'} />}
       </Card>
     </>
   )

@@ -7,11 +7,10 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   return <section className={`card ${className}`}>{children}</section>
 }
 
-export function PageHeader({ eyebrow, title, subtitle, children }: { eyebrow: string; title: ReactNode; subtitle?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children?: ReactNode }) {
   return (
     <div className="page-header">
       <div className="page-header-copy">
-        <span className="eyebrow">{eyebrow}</span>
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
@@ -56,13 +55,13 @@ export function ProgressBar({ percent, color, height = 6 }: { percent: number; c
   )
 }
 
-export function AppAvatar({ name, category, icon, size = 32 }: { name: string; category: CategoryName; icon?: string | null; size?: number }) {
+export function AppAvatar({ name, category, icon, size = 28 }: { name: string; category: CategoryName; icon?: string | null; size?: number }) {
   if (icon) {
     return <span className="avatar avatar-image" style={{ width: size, height: size }}><img src={icon} alt="" /></span>
   }
   const color = CATEGORY_COLORS[category] ?? CATEGORY_COLORS.Other
   return (
-    <span className="avatar" style={{ width: size, height: size, background: `${color}22`, color }}>
+    <span className="avatar" style={{ width: size, height: size, background: `${color}1f`, color }}>
       {initials(name)}
     </span>
   )
@@ -88,16 +87,13 @@ export function DeltaChip({ tone }: { tone: 'above' | 'below' | 'even' }) {
   return <span className={`delta-chip delta-${tone}`}><Icon size={13} /></span>
 }
 
-export function StatCard({ icon, label, value, note, tone = 'blue' }: { icon: ReactNode; label: string; value: string; note: string; tone?: 'blue' | 'violet' | 'green' }) {
+export function StatBlock({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <Card className="stat-card">
-      <span className={`stat-icon tone-${tone}`}>{icon}</span>
-      <div className="stat-copy">
-        <span className="stat-label">{label}</span>
-        <strong>{value}</strong>
-        <small>{note}</small>
-      </div>
-    </Card>
+    <div className="stat-block">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{note}</small>
+    </div>
   )
 }
 
@@ -116,9 +112,8 @@ export function AppRow({ name, category, icon, seconds, maxSeconds, trailing }: 
       <div className="app-row-body">
         <div className="app-row-title">
           <strong>{name}</strong>
-          <span className="app-row-category">{category}</span>
         </div>
-        <ProgressBar percent={maxSeconds > 0 ? (seconds / maxSeconds) * 100 : 0} color={color} height={5} />
+        <ProgressBar percent={maxSeconds > 0 ? (seconds / maxSeconds) * 100 : 0} color={color} height={4} />
       </div>
       <span className="app-row-time">{formatDuration(seconds)}</span>
       {trailing}
@@ -126,10 +121,9 @@ export function AppRow({ name, category, icon, seconds, maxSeconds, trailing }: 
   )
 }
 
-export function EmptyState({ icon, title, note }: { icon: ReactNode; title: string; note: string }) {
+export function EmptyState({ title, note }: { title: string; note: string }) {
   return (
     <div className="empty-state">
-      <span className="empty-icon">{icon}</span>
       <strong>{title}</strong>
       <span>{note}</span>
     </div>

@@ -1,9 +1,8 @@
-import { Activity, BarChart3, Clock3, Command, Sparkles, Trash2, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AppRow, Card, DateStepper, DeltaChip, EmptyState, LoadingRows, PageHeader, SegmentedControl, StatCard } from '../components'
+import { AppRow, Card, DateStepper, DeltaChip, EmptyState, LoadingRows, PageHeader, SegmentedControl, StatBlock } from '../components'
 import { CATEGORY_COLORS, CATEGORY_NAMES, comparison, formatDuration, periodLabel, shiftDate, todayKey } from '../lib'
-import type { DashboardData, TimeRange, TrackerStatus } from '../../../shared/types'
+import type { DashboardData, TimeRange } from '../../../shared/types'
 
 interface ChartRow {
   label: string
@@ -27,7 +26,7 @@ function RoundedBar({ x = 0, y = 0, width = 0, height = 0, fill, name, payload }
   if (payload?.top !== name) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />
   }
-  const radius = Math.min(5, width / 2, height)
+  const radius = Math.min(4, width / 2, height)
   return (
     <path
       d={`M${x},${y + height} L${x},${y + radius} Q${x},${y} ${x + radius},${y} L${x + width - radius},${y} Q${x + width},${y} ${x + width},${y + radius} L${x + width},${y + height} Z`}
@@ -65,7 +64,7 @@ function TrendBars({ data }: { data: DashboardData }) {
       <span className="hero-trend-label">LAST 7 DAYS</span>
       <div className="hero-bars">
         {data.trend.map((point, index) => {
-          const height = Math.max(4, Math.round((point.seconds / max) * 62))
+          const height = Math.max(4, Math.round((point.seconds / max) * 56))
           const isCurrent = index === data.trend.length - 1
           const isEmpty = point.seconds < 60
           return (
@@ -80,11 +79,10 @@ function TrendBars({ data }: { data: DashboardData }) {
   )
 }
 
-export function OverviewPage({ data, range, selectedDate, status, icons, onRangeChange, onDateChange, onRemoveDemo }: {
+export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, onDateChange, onRemoveDemo }: {
   data: DashboardData | null
   range: TimeRange
   selectedDate: string
-  status: TrackerStatus | null
   icons: Record<number, string | null>
   onRangeChange: (range: TimeRange) => void
   onDateChange: (date: string) => void
@@ -102,23 +100,11 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
   const hasActivity = Boolean(data && data.totalSeconds > 0)
   const forwardDisabled = selectedDate >= todayKey()
 
-  const peak = useMemo(() => {
-    if (!data || data.totalSeconds <= 0) return null
-    return data.buckets.reduce((best, bucket) => (bucket.totalSeconds > best.totalSeconds ? bucket : best), data.buckets[0])
-  }, [data])
-
-  const currentState = status && !status.tracking
-    ? 'Tracking paused'
-    : status?.idle
-      ? 'Away from keyboard'
-      : status?.currentApp ?? 'Ready for whatever is next'
-
   return (
     <>
       <PageHeader
-        eyebrow="YOUR DAY, IN PERSPECTIVE"
-        title={<>Still<span>time</span> overview</>}
-        subtitle={`${periodLabel(selectedDate, range)} · a gentle look at where your attention went`}
+        title={<>Still<span>time</span></>}
+        subtitle={`${periodLabel(selectedDate, range)} · where your attention went`}
       >
         <DateStepper
           label={periodLabel(selectedDate, range)}
@@ -130,16 +116,13 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
       </PageHeader>
 
       {data?.hasDemoData && (
-        <div className="demo-banner">
-          <Sparkles size={15} />
-          <span>You’re viewing <strong>sample activity</strong> from the first run. Real tracking is blended in as you use your PC.</span>
-          <button onClick={onRemoveDemo}><Trash2 size={13} /> Remove sample</button>
+        <div className="demo-line">
+          <span>Sample activity is included in these totals.</span>
+          <button onClick={onRemoveDemo}>Remove sample</button>
         </div>
       )}
 
       <section className="hero">
-        <span className="hero-blob hero-blob-a" aria-hidden="true" />
-        <span className="hero-blob hero-blob-b" aria-hidden="true" />
         <div className="hero-copy">
           <span className="hero-overline">TOTAL SCREEN TIME</span>
           {data ? (
@@ -151,67 +134,53 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
             <DeltaChip tone={delta?.tone ?? 'even'} />
             <span>{delta?.text ?? '—'}</span>
           </div>
-          {data && (
-            <div className="hero-substats">
-              <span><em>7-day average</em><strong>{formatDuration(data.averageSeconds)}</strong></span>
-              <span className="hero-subdiv" />
-              <span><em>Most used</em><strong>{data.apps[0]?.name ?? '—'}</strong></span>
-              <span className="hero-subdiv" />
-              <span><em>Right now</em><strong>{currentState}</strong></span>
-            </div>
-          )}
         </div>
         {data ? <TrendBars data={data} /> : <span className="skeleton skeleton-strip" />}
       </section>
 
       <div className="stats-row">
-        <StatCard tone="blue" icon={<BarChart3 size={17} />} label="DAILY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} note="Across the last 7 days" />
-        <StatCard tone="violet" icon={<Command size={17} />} label="APPS USED" value={data ? `${data.appCount}` : '—'} note={range === 'day' ? 'in this day' : 'this week'} />
-        <StatCard tone="green" icon={<Activity size={17} />} label="FOCUS NOW" value={currentState} note={status?.idle ? 'Counting resumes when you’re back' : 'Foreground app, updated live'} />
+        <StatBlock label="DAILY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} note="Across the last 7 days" />
+        <StatBlock label="APPS USED" value={data ? `${data.appCount}` : '—'} note={range === 'day' ? 'In this day' : 'This week'} />
       </div>
 
       <div className="grid-2">
         <Card className="chart-card">
           <div className="card-head">
-            <div>
-              <span className="section-label">ACTIVITY</span>
-              <h2>{range === 'day' ? 'Usage by hour' : 'Usage by day'}</h2>
-            </div>
-            <div className="chart-tools">
-              {peak && <span className="peak-pill"><TrendingUp size={12} /> {range === 'day' ? `Busiest around ${peak.label}` : `Busiest ${peak.label}`}</span>}
+            <h2>{range === 'day' ? 'Usage by hour' : 'Usage by day'}</h2>
+          </div>
+          {data && hasActivity ? (
+            <>
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 6, right: 4, left: -18, bottom: 0 }} barCategoryGap={range === 'day' ? '26%' : '38%'}>
+                    <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 6" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={range === 'day' ? 2 : 0} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickFormatter={(value: number) => formatDuration(value, 'coarse')} width={42} tickCount={4} />
+                    <Tooltip content={<UsageTooltip />} cursor={{ fill: 'var(--chart-hover)', radius: 4 }} />
+                    {CATEGORY_NAMES.map((category) => (
+                      <Bar
+                        key={category}
+                        dataKey={category}
+                        stackId="usage"
+                        fill={CATEGORY_COLORS[category]}
+                        maxBarSize={range === 'day' ? 16 : 40}
+                        animationDuration={450}
+                        shape={(props: unknown) => <RoundedBar {...(props as BarShapeProps)} />}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
               {topCategories.length > 0 && (
                 <div className="legend">
-                  {topCategories.slice(0, 3).map((item) => (
+                  {topCategories.slice(0, 4).map((item) => (
                     <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-          {data && hasActivity ? (
-            <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 6, right: 4, left: -18, bottom: 0 }} barCategoryGap={range === 'day' ? '26%' : '38%'}>
-                  <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 6" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={range === 'day' ? 2 : 0} dy={8} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickFormatter={(value: number) => formatDuration(value, 'coarse')} width={42} />
-                  <Tooltip content={<UsageTooltip />} cursor={{ fill: 'var(--chart-hover)', radius: 6 }} />
-                  {CATEGORY_NAMES.map((category) => (
-                    <Bar
-                      key={category}
-                      dataKey={category}
-                      stackId="usage"
-                      fill={CATEGORY_COLORS[category]}
-                      maxBarSize={range === 'day' ? 18 : 42}
-                      animationDuration={500}
-                      shape={(props: unknown) => <RoundedBar {...(props as BarShapeProps)} />}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            </>
           ) : data ? (
-            <EmptyState icon={<Clock3 size={18} />} title="Nothing recorded yet" note="Leave Stilltime running in your tray — activity appears within a minute of using any app." />
+            <EmptyState title="Nothing recorded yet" note="Stilltime runs quietly in your tray — activity appears within a minute of using any app." />
           ) : (
             <LoadingRows rows={5} />
           )}
@@ -219,11 +188,7 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
 
         <Card className="most-used-card">
           <div className="card-head">
-            <div>
-              <span className="section-label">WHERE TIME GOES</span>
-              <h2>Most used</h2>
-            </div>
-            {data && data.apps.length > 0 && <span className="card-note">share of {range === 'day' ? 'day' : 'week'}</span>}
+            <h2>Most used</h2>
           </div>
           {data ? (
             data.apps.length ? (
@@ -236,12 +201,11 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
                     icon={icons[app.id]}
                     seconds={app.seconds}
                     maxSeconds={maxAppSeconds}
-                    trailing={<span className="app-share">{data.totalSeconds > 0 ? Math.round((app.seconds / data.totalSeconds) * 100) : 0}%</span>}
                   />
                 ))}
               </div>
             ) : (
-              <EmptyState icon={<Sparkles size={18} />} title="Your favorites will appear here" note="Spend a few minutes in any app and it shows up instantly." />
+              <EmptyState title="No apps yet" note="Spend a few minutes in any app and it shows up instantly." />
             )
           ) : (
             <LoadingRows rows={4} />
@@ -251,10 +215,7 @@ export function OverviewPage({ data, range, selectedDate, status, icons, onRange
 
       <Card className="categories-card">
         <div className="card-head">
-          <div>
-            <span className="section-label">THE BIG PICTURE</span>
-            <h2>By category</h2>
-          </div>
+          <h2>By category</h2>
           <span className="card-note">{data ? formatDuration(data.totalSeconds) : '—'} total</span>
         </div>
         {data && topCategories.length ? (

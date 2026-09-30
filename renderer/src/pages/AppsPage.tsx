@@ -1,4 +1,4 @@
-import { ChevronDown, Command, Search, ShieldCheck, X } from 'lucide-react'
+import { ChevronDown, Search, ShieldCheck, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AppAvatar, Card, EmptyState, LoadingRows, PageHeader, ProgressBar } from '../components'
 import { CATEGORY_COLORS, CATEGORY_NAMES, formatDuration } from '../lib'
@@ -23,7 +23,10 @@ export function AppsPage({ directory, data, icons, onCategoryChange }: {
 
   return (
     <>
-      <PageHeader eyebrow="YOUR DIGITAL LIFE" title="Apps" subtitle={`${directory.length} apps tracked · categories are automatic, and you can change any of them`}>
+      <PageHeader
+        title="Apps"
+        subtitle={`${directory.length} apps seen · categories are automatic and always adjustable`}
+      >
         <label className="search">
           <Search size={15} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search apps" />
@@ -32,11 +35,6 @@ export function AppsPage({ directory, data, icons, onCategoryChange }: {
       </PageHeader>
 
       <Card className="list-card">
-        <div className="list-head apps-list-grid">
-          <span>APPLICATION</span>
-          <span>TIME SPENT</span>
-          <span>CATEGORY</span>
-        </div>
         {!data ? (
           <LoadingRows rows={6} />
         ) : rows.length ? (
@@ -48,12 +46,11 @@ export function AppsPage({ directory, data, icons, onCategoryChange }: {
                   <AppAvatar name={row.name} category={row.category} icon={icons[row.id]} />
                   <div className="app-row-title-col">
                     <strong>{row.name}</strong>
-                    <small>{shortPath(row.executablePath)}</small>
                   </div>
                 </div>
                 <div className="app-row-usage">
                   <span>{formatDuration(row.seconds)}</span>
-                  <ProgressBar percent={row.seconds > 0 ? (row.seconds / maxSeconds) * 100 : 0} color={color} height={5} />
+                  <ProgressBar percent={row.seconds > 0 ? (row.seconds / maxSeconds) * 100 : 0} color={color} height={4} />
                 </div>
                 <label className="select">
                   <select
@@ -69,17 +66,11 @@ export function AppsPage({ directory, data, icons, onCategoryChange }: {
             )
           })
         ) : (
-          <EmptyState icon={<Command size={18} />} title="No apps found" note={query ? 'Try a different search.' : 'Apps appear here as soon as Stilltime sees them in front.'} />
+          <EmptyState title="No apps found" note={query ? 'Try a different search.' : 'Apps appear here as soon as Stilltime sees them in front.'} />
         )}
       </Card>
 
       <p className="privacy-line"><ShieldCheck size={13} /> App activity never leaves this computer.</p>
     </>
   )
-}
-
-function shortPath(path: string) {
-  if (path.startsWith('demo://') || path.startsWith('unknown:')) return 'Detected automatically'
-  const parts = path.split('\\')
-  return parts.length > 2 ? `…\\${parts.slice(-2).join('\\')}` : path
 }

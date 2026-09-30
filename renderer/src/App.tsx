@@ -16,16 +16,12 @@ import type {
 
 type Section = 'Overview' | 'Apps' | 'Categories' | 'Limits' | 'Downtime' | 'Settings'
 
-const NAV: Array<{ group: string; items: Array<{ label: Section; icon: typeof LayoutDashboard }> }> = [
-  { group: 'YOUR TIME', items: [
-    { label: 'Overview', icon: LayoutDashboard },
-    { label: 'Apps', icon: Command },
-    { label: 'Categories', icon: FolderKanban },
-  ] },
-  { group: 'BOUNDARIES', items: [
-    { label: 'Limits', icon: Gauge },
-    { label: 'Downtime', icon: Moon },
-  ] },
+const NAV: Array<{ label: Section; icon: typeof LayoutDashboard }> = [
+  { label: 'Overview', icon: LayoutDashboard },
+  { label: 'Apps', icon: Command },
+  { label: 'Categories', icon: FolderKanban },
+  { label: 'Limits', icon: Gauge },
+  { label: 'Downtime', icon: Moon },
 ]
 
 function dateKey() {
@@ -139,7 +135,7 @@ export default function App() {
   const page = useMemo(() => {
     switch (section) {
       case 'Overview':
-        return <OverviewPage data={dashboard} range={range} selectedDate={selectedDate} status={status} icons={icons} onRangeChange={setRange} onDateChange={setSelectedDate} onRemoveDemo={() => void handleRemoveDemo()} />
+        return <OverviewPage data={dashboard} range={range} selectedDate={selectedDate} icons={icons} onRangeChange={setRange} onDateChange={setSelectedDate} onRemoveDemo={() => void handleRemoveDemo()} />
       case 'Apps':
         return <AppsPage directory={directory} data={dashboard} icons={icons} onCategoryChange={(id, category) => void handleCategoryChange(id, category)} />
       case 'Categories':
@@ -192,44 +188,28 @@ export default function App() {
           <span>stilltime</span>
         </div>
         <nav className="nav">
-          {NAV.map(({ group, items }) => (
-            <div className="nav-group" key={group}>
-              <span className="nav-label">{group}</span>
-              {items.map(({ label, icon: Icon }) => (
-                <button key={label} className={`nav-item ${section === label ? 'is-active' : ''}`} onClick={() => setSection(label)}>
-                  <Icon size={16} strokeWidth={section === label ? 2.2 : 1.8} />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
+          {NAV.map(({ label, icon: Icon }) => (
+            <button key={label} className={`nav-item ${section === label ? 'is-active' : ''}`} onClick={() => setSection(label)}>
+              <Icon size={16} strokeWidth={1.9} />
+              <span>{label}</span>
+            </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
           <button className={`nav-item ${section === 'Settings' ? 'is-active' : ''}`} onClick={() => setSection('Settings')}>
-            <Settings2 size={16} strokeWidth={section === 'Settings' ? 2.2 : 1.8} />
+            <Settings2 size={16} strokeWidth={1.9} />
             <span>Settings</span>
           </button>
-          <div className="live-card">
-            <div className="live-top">
-              <span className="live-label">RIGHT NOW</span>
-              <button className="live-pause" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
-                {paused ? <Play size={13} /> : <Pause size={13} />}
-              </button>
+          <div className="side-status">
+            <i className={`side-status-dot ${paused || status?.idle || !status?.currentApp ? 'is-off' : ''}`} />
+            <div className="side-status-copy">
+              <strong>{paused ? 'Paused' : status?.idle ? 'Away' : status?.currentApp ?? 'Ready'}</strong>
+              <span>{formatDuration(status?.todaySeconds ?? 0)} today</span>
             </div>
-            <div className="live-app">
-              {currentIcon
-                ? <img className="live-icon" src={currentIcon} alt="" />
-                : <span className={`live-icon live-placeholder ${paused || status?.idle || !status?.currentApp ? 'is-paused' : ''}`}><Activity size={14} /></span>}
-              <div className="live-copy">
-                <strong>{paused ? 'Tracking paused' : status?.idle ? 'Away from keyboard' : status?.currentApp ?? 'Waiting for activity'}</strong>
-                <span>{paused ? 'Nothing is being recorded' : status?.idle ? 'Counting resumes on input' : status?.currentApp ? 'Foreground app' : 'Stilltime is watching quietly'}</span>
-              </div>
-            </div>
-            <div className="live-total">
-              <strong>{formatDuration(status?.todaySeconds ?? 0)}</strong>
-              <span>tracked today</span>
-              <i className={`live-dot ${paused ? 'is-off' : ''}`} />
-            </div>
+            {currentIcon && <img className="avatar avatar-image" src={currentIcon} alt="" style={{ width: 22, height: 22 }} />}
+            <button className="icon-button" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
+              {paused ? <Play size={13} /> : <Pause size={13} />}
+            </button>
           </div>
           <p className="sidebar-foot"><ShieldCheck size={12} /> Stored only on this device</p>
         </div>
@@ -239,7 +219,6 @@ export default function App() {
         <header className="topbar">
           <span className="topbar-title">{section}</span>
           <div className="topbar-actions">
-            <span className="pill"><i /> Private</span>
             <button className="icon-button" onClick={() => void handleAppearance(isDark ? 'light' : 'dark')} aria-label="Toggle appearance" title="Toggle appearance">
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
@@ -247,10 +226,6 @@ export default function App() {
         </header>
         <div className="content">
           {page}
-          <footer className="footer">
-            <span>Stilltime · a calmer way to see your screen time</span>
-            <span><ShieldCheck size={12} /> {settings?.version ? `v${settings.version}` : ''}</span>
-          </footer>
         </div>
       </main>
 
