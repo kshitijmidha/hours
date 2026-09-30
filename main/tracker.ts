@@ -50,6 +50,7 @@ export class ActivityTracker {
   private activeSession: ActiveSession | null = null
   private currentTitle = ''
   private currentApp: string | null = null
+  private currentAppId: number | null = null
   private paused = false
   private idle = false
   private listeners = new Set<(status: TrackerStatus) => void>()
@@ -74,7 +75,7 @@ export class ActivityTracker {
     this.paused = paused
     if (paused) this.closeActive()
     else void this.poll()
-    this.emit()
+    this.emit(true)
   }
 
   onStatus(listener: (status: TrackerStatus) => void) {
@@ -83,7 +84,7 @@ export class ActivityTracker {
   }
 
   getStatus(): TrackerStatus {
-    const snapshot = this.store.getTodaySnapshot(!this.paused, this.idle, this.currentApp)
+    const snapshot = this.store.getTodaySnapshot(!this.paused, this.idle, this.currentApp, this.currentAppId)
     return snapshot.status
   }
 
@@ -122,6 +123,7 @@ export class ActivityTracker {
       }
       this.currentTitle = title
       this.currentApp = name
+      this.currentAppId = appId
       this.emit()
     } catch (error) {
       // A denied OS permission or a transient API error should not stop the tracker.
@@ -138,11 +140,12 @@ export class ActivityTracker {
     this.activeSession = null
     this.currentTitle = ''
     this.currentApp = null
+    this.currentAppId = null
   }
 
-  private emit() {
+  private emit(force = false) {
     const now = Date.now()
-    if (now - this.lastStatusPush < 1500) return
+    if (!force && now - this.lastStatusPush < 1500) return
     this.lastStatusPush = now
     const status = this.getStatus()
     for (const listener of this.listeners) listener(status)

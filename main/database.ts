@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { join } from 'node:path'
-import type { AppDirectoryEntry, CategoryName, DashboardData, TimeRange, TrackerStatus, UsageApp, UsageBucket } from '../shared/types'
+import type { AppDirectoryEntry, AppLimit, CategoryName, ControlSnapshot, DashboardData, DowntimeSettings, LimitTargetType, TimeRange, TrackerStatus, UsageApp, UsageBucket } from '../shared/types'
 
 export interface ActiveSession {
   id: number
@@ -100,6 +100,20 @@ export class Store {
         daily_limit_seconds INTEGER NOT NULL CHECK (daily_limit_seconds > 0),
         UNIQUE (target_type, target_id)
       );
+      CREATE TABLE IF NOT EXISTS always_allowed (
+        app_id INTEGER PRIMARY KEY REFERENCES apps(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS limit_notifications (
+        limit_id INTEGER NOT NULL REFERENCES limits(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL,
+        threshold INTEGER NOT NULL,
+        PRIMARY KEY (limit_id, local_date, threshold)
+      );
+      CREATE TABLE IF NOT EXISTS downtime_notifications (
+        app_id INTEGER NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+        window_key TEXT NOT NULL,
+        PRIMARY KEY (app_id, window_key)
+      );
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -156,7 +170,7 @@ export class Store {
     return seconds
   }
 
-  getTodaySnapshot(tracking: boolean, idle: boolean, currentApp: string | null) {
+  getTodaySnapshot(tracking: boolean, idle: boolean, currentApp: string | null, currentAppId: number | null) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const rows = this.db.prepare(`
@@ -167,7 +181,7 @@ export class Store {
     const totalSeconds = rows.reduce((total, row) => total + row.durationSeconds, 0)
     const apps = new Set(rows.map((row) => row.appName))
     return {
-      status: { tracking, idle, currentApp, todaySeconds: totalSeconds },
+      status: { tracking, idle, currentApp, currentAppId, todaySeconds: totalSeconds },
       totalSeconds,
       appCount: apps.size,
       sessions: rows.slice(0, 8),
@@ -286,6 +300,106 @@ export class Store {
     const category = this.db.prepare('SELECT id FROM categories WHERE name = ?').get(categoryName) as { id: number } | undefined
     if (!category) throw new Error('Unknown category')
     this.db.prepare('UPDATE apps SET category_id = ? WHERE id = ?').run(category.id, appId)
+  }
+
+  getControls(): ControlSnapshot {
+    const apps = this.getAppDirectory()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const appUsage = new Map<number, number>()
+    const categoryUsage = new Map<CategoryName, number>()
+    for (const row of this.readSessions(today, tomorrow)) {
+      if (row.is_demo) continue
+      const from = Math.max(new Date(row.started_at).getTime(), today.getTime())
+      const to = Math.min(row.ended_at ? new Date(row.ended_at).getTime() : new Date(row.started_at).getTime() + row.duration_seconds * 1000, tomorrow.getTime())
+      const seconds = Math.max(0, Math.floor((to - from) / 1000))
+      appUsage.set(row.app_id, (appUsage.get(row.app_id) ?? 0) + seconds)
+      categoryUsage.set(row.category, (categoryUsage.get(row.category) ?? 0) + seconds)
+    }
+    const limitRows = this.db.prepare(`
+      SELECT l.id, l.target_type AS targetType, l.target_id AS targetId, l.daily_limit_seconds AS dailyLimitSeconds,
+        CASE WHEN l.target_type = 'app' THEN a.name ELSE c.name END AS targetName,
+        CASE WHEN l.target_type = 'app' THEN appCategory.color ELSE c.color END AS color
+      FROM limits l
+      LEFT JOIN apps a ON l.target_type = 'app' AND a.id = l.target_id
+      LEFT JOIN categories appCategory ON appCategory.id = a.category_id
+      LEFT JOIN categories c ON l.target_type = 'category' AND c.id = l.target_id
+      ORDER BY targetName COLLATE NOCASE
+    `).all() as Array<{ id: number; targetType: LimitTargetType; targetId: number; targetName: string; color: string; dailyLimitSeconds: number }>
+    const limits: AppLimit[] = limitRows.filter((item) => item.targetName).map((item) => {
+      const usedSeconds = item.targetType === 'app' ? appUsage.get(item.targetId) ?? 0 : categoryUsage.get(item.targetName as CategoryName) ?? 0
+      return { ...item, usedSeconds, percent: Math.round((usedSeconds / item.dailyLimitSeconds) * 100) }
+    })
+    const alwaysAllowedIds = (this.db.prepare('SELECT app_id AS id FROM always_allowed').all() as Array<{ id: number }>).map(({ id }) => id)
+    return {
+      limits,
+      apps,
+      categories: this.db.prepare('SELECT id, name, color FROM categories ORDER BY id').all() as Array<{ id: number; name: CategoryName; color: string }>,
+      alwaysAllowedIds,
+      downtime: {
+        enabled: this.getSetting('downtime_enabled') === 'true',
+        start: this.getSetting('downtime_start') ?? '23:00',
+        end: this.getSetting('downtime_end') ?? '07:00',
+      },
+    }
+  }
+
+  setLimit(targetType: LimitTargetType, targetId: number, dailyLimitSeconds: number | null) {
+    if (dailyLimitSeconds === null) {
+      this.db.prepare('DELETE FROM limits WHERE target_type = ? AND target_id = ?').run(targetType, targetId)
+      return
+    }
+    if (!Number.isInteger(dailyLimitSeconds) || dailyLimitSeconds <= 0) throw new Error('A limit must be a positive number of seconds')
+    if (targetType === 'app' && !this.getAppPath(targetId)) throw new Error('Unknown app')
+    if (targetType === 'category' && !(this.db.prepare('SELECT id FROM categories WHERE id = ?').get(targetId))) throw new Error('Unknown category')
+    this.db.prepare(`
+      INSERT INTO limits(target_type, target_id, daily_limit_seconds) VALUES (?, ?, ?)
+      ON CONFLICT(target_type, target_id) DO UPDATE SET daily_limit_seconds = excluded.daily_limit_seconds
+    `).run(targetType, targetId, dailyLimitSeconds)
+  }
+
+  setDowntime(settings: DowntimeSettings) {
+    const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+    if (!validTime(settings.start) || !validTime(settings.end)) throw new Error('Downtime requires valid start and end times')
+    this.setSetting('downtime_enabled', String(settings.enabled))
+    this.setSetting('downtime_start', settings.start)
+    this.setSetting('downtime_end', settings.end)
+  }
+
+  setAlwaysAllowed(appId: number, allowed: boolean) {
+    if (!this.getAppPath(appId)) throw new Error('Unknown app')
+    if (allowed) this.db.prepare('INSERT OR IGNORE INTO always_allowed(app_id) VALUES (?)').run(appId)
+    else this.db.prepare('DELETE FROM always_allowed WHERE app_id = ?').run(appId)
+  }
+
+  recordLimitNotification(limitId: number, localDate: string, threshold: number) {
+    return this.db.prepare('INSERT OR IGNORE INTO limit_notifications(limit_id, local_date, threshold) VALUES (?, ?, ?)').run(limitId, localDate, threshold).changes === 1
+  }
+
+  recordDowntimeNotification(appId: number, windowKey: string) {
+    return this.db.prepare('INSERT OR IGNORE INTO downtime_notifications(app_id, window_key) VALUES (?, ?)').run(appId, windowKey).changes === 1
+  }
+
+  isAlwaysAllowed(appId: number) {
+    return Boolean(this.db.prepare('SELECT 1 FROM always_allowed WHERE app_id = ?').get(appId))
+  }
+
+  getAppName(appId: number) {
+    return (this.db.prepare('SELECT name FROM apps WHERE id = ?').get(appId) as { name: string } | undefined)?.name ?? 'An app'
+  }
+
+  deleteAllData() {
+    const clear = this.db.transaction(() => {
+      this.db.prepare('DELETE FROM sessions').run()
+      this.db.prepare('DELETE FROM limits').run()
+      this.db.prepare('DELETE FROM apps').run()
+      this.db.prepare('DELETE FROM limit_notifications').run()
+      this.db.prepare('DELETE FROM downtime_notifications').run()
+      this.setSetting('demo_seeded', 'true')
+    })
+    clear()
   }
 
   seedDemoData() {

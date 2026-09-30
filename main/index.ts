@@ -2,12 +2,14 @@ import { app, BrowserWindow, Menu, nativeImage, Tray, Notification, powerMonitor
 import { join } from 'node:path'
 import { Store } from './database'
 import { ActivityTracker } from './tracker'
+import { BoundaryMonitor } from './controls'
 import { registerIpc } from './ipc'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let store: Store
 let tracker: ActivityTracker
+let boundaryMonitor: BoundaryMonitor
 let quitting = false
 
 function createWindow() {
@@ -63,10 +65,12 @@ app.whenReady().then(() => {
   app.setAppUserModelId('com.stilltime.desktop')
   store = new Store()
   tracker = new ActivityTracker(store)
+  boundaryMonitor = new BoundaryMonitor(store)
   registerIpc(store, tracker)
   tracker.onStatus((status) => {
     mainWindow?.webContents.send('tracker:status', status)
     tray?.setToolTip(status.currentApp ? `Stilltime — tracking ${status.currentApp}` : 'Stilltime — tracking quietly')
+    void boundaryMonitor.check(status)
   })
   createWindow()
   createTray()

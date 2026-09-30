@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Activity, ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, CalendarDays,
-  Check, ChevronDown, Clock3, Command, FolderKanban, Gauge, LayoutDashboard, Moon, Pause,
-  Play, Search, Settings2, ShieldCheck, Sparkles, Sun, Timer, X,
+  Activity, AlertTriangle, ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, Bell,
+  CalendarDays, Check, ChevronDown, Clock3, Command, FolderKanban, Gauge, LayoutDashboard, Moon,
+  Pause, Play, Plus, Search, Settings2, ShieldCheck, Sparkles, Sun, Timer, Trash2, X,
 } from 'lucide-react'
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { AppDirectoryEntry, CategoryName, DashboardData, TimeRange, UsageApp } from '../../shared/types'
+import type { AppDirectoryEntry, CategoryName, ControlSnapshot, DashboardData, LimitTargetType, TimeRange, UsageApp } from '../../shared/types'
 
 type Section = 'Overview' | 'Apps' | 'Categories' | 'Limits' | 'Downtime' | 'Settings'
 const categoryNames: CategoryName[] = ['Productivity', 'Social', 'Entertainment', 'Development', 'Browsing', 'Other']
@@ -213,6 +213,82 @@ function CategoriesPage({ data, directory }: { data: DashboardData | null; direc
   </>
 }
 
+function LimitsPage({ controls, onSave, onRemove }: {
+  controls: ControlSnapshot | null
+  onSave: (targetType: LimitTargetType, targetId: number, seconds: number) => Promise<void>
+  onRemove: (limit: ControlSnapshot['limits'][number]) => Promise<void>
+}) {
+  const defaultTarget = controls?.apps[0] ? `app|${controls.apps[0].id}` : controls?.categories[0] ? `category|${controls.categories[0].id}` : ''
+  const [target, setTarget] = useState(defaultTarget)
+  const [minutes, setMinutes] = useState('120')
+  useEffect(() => { if (!target && defaultTarget) setTarget(defaultTarget) }, [defaultTarget, target])
+  const [targetType = 'app', rawId = ''] = target.split('|')
+  const targetId = Number(rawId)
+  const canSave = targetId > 0 && Number(minutes) >= 15 && Number(minutes) <= 1440
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!canSave) return
+    await onSave(targetType as LimitTargetType, targetId, Math.round(Number(minutes) * 60))
+  }
+  return <>
+    <div className="subpage-heading"><div className="eyebrow"><span className="eyebrow-spark"><Gauge size={12} /></span> KINDER BOUNDARIES</div><h1>Set a limit, <em>not a hard stop.</em></h1><p>Get a small nudge at 80%, and a clear one when your daily time is up.</p></div>
+    <Card className="limit-editor-card"><div className="limit-editor-heading"><span className="limit-editor-icon"><Bell size={16} /></span><div><strong>A daily reminder</strong><span>Your apps keep working. You just get a moment to choose.</span></div></div><form className="limit-form" onSubmit={(event) => void save(event)}><label className="limit-target"><span>SET A LIMIT FOR</span><select value={target} onChange={(event) => setTarget(event.target.value)}><optgroup label="Apps">{controls?.apps.map((item) => <option key={item.id} value={`app|${item.id}`}>{item.name}</option>)}</optgroup><optgroup label="Categories">{controls?.categories.map((item) => <option key={item.id} value={`category|${item.id}`}>{item.name}</option>)}</optgroup></select><ChevronDown size={13} /></label><label className="limit-minutes"><span>DAILY BUDGET</span><div><input type="number" min="15" max="1440" step="15" value={minutes} onChange={(event) => setMinutes(event.target.value)} /><span>minutes</span></div></label><button className="primary-button" type="submit" disabled={!canSave}><Plus size={14} /> Add limit</button></form><div className="limit-editor-foot"><span><i className="threshold-dot threshold-80" /> A heads-up at 80%</span><span><i className="threshold-dot threshold-100" /> Daily limit reached at 100%</span><span><ShieldCheck size={12} /> Notices stay on this device</span></div></Card>
+    <div className="control-section-heading"><div><span className="section-kicker">YOUR DAILY BUDGETS</span><h2>Limits in place</h2></div><span>{controls?.limits.length ?? 0} active</span></div>
+    {controls?.limits.length ? <div className="limits-list">{controls.limits.map((limit) => {
+      const progressColor = limit.percent >= 100 ? '#ff375f' : limit.percent >= 80 ? '#ff9f0a' : limit.color
+      return <Card className="limit-row-card" key={limit.id}><span className="limit-target-dot" style={{ background: limit.color }} /><div className="limit-row-main"><div className="limit-row-title"><strong>{limit.targetName}</strong><span>{limit.targetType === 'app' ? 'App limit' : 'Category limit'}</span></div><ProgressBar percent={limit.percent} color={progressColor} /><div className="limit-row-usage"><span>{formatDuration(limit.usedSeconds)} used today</span><span>{formatDuration(limit.dailyLimitSeconds)} daily</span></div></div><div className={`limit-percent ${limit.percent >= 80 ? 'near-limit' : ''}`}>{Math.min(limit.percent, 999)}<small>%</small></div><button className="remove-limit" title={`Remove ${limit.targetName} limit`} onClick={() => void onRemove(limit)}><Trash2 size={14} /></button></Card>
+    })}</div> : <Card className="controls-empty"><div className="controls-empty-icon"><Gauge size={19} /></div><strong>Nothing to limit, yet.</strong><span>Add a daily budget above and we’ll give you a gentle reminder when it matters.</span></Card>}
+  </>
+}
+
+function DowntimePage({ controls, icons, onScheduleChange, onAllowChange }: {
+  controls: ControlSnapshot | null
+  icons: Record<number, string | null>
+  onScheduleChange: (enabled: boolean, start: string, end: string) => Promise<void>
+  onAllowChange: (appId: number, allowed: boolean) => Promise<void>
+}) {
+  const [start, setStart] = useState(controls?.downtime.start ?? '23:00')
+  const [end, setEnd] = useState(controls?.downtime.end ?? '07:00')
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    if (!controls) return
+    setStart(controls.downtime.start)
+    setEnd(controls.downtime.end)
+  }, [controls?.downtime.start, controls?.downtime.end])
+  const eligibleApps = (controls?.apps ?? []).filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
+  return <>
+    <div className="subpage-heading"><div className="eyebrow"><span className="eyebrow-spark"><Moon size={12} /></span> SPACE TO REST</div><h1>Make space for <em>offline time.</em></h1><p>Choose a quiet window. If you open an app, we’ll gently remind you why you set it.</p></div>
+    <Card className="downtime-card"><div className="downtime-top"><div className="downtime-orb"><Moon size={18} /></div><div className="downtime-copy"><strong>Scheduled downtime</strong><span>Get a gentle notification when you open an app during your quiet hours.</span></div><button className={`switch ${controls?.downtime.enabled ? 'switch-on' : ''}`} role="switch" aria-checked={controls?.downtime.enabled ?? false} aria-label="Enable scheduled downtime" onClick={() => void onScheduleChange(!controls?.downtime.enabled, start, end)}><i /></button></div><div className="schedule-picker"><label><span>STARTS</span><input type="time" value={start} onChange={(event) => { setStart(event.target.value); void onScheduleChange(Boolean(controls?.downtime.enabled), event.target.value, end) }} /></label><span className="schedule-arrow">to</span><label><span>ENDS</span><input type="time" value={end} onChange={(event) => { setEnd(event.target.value); void onScheduleChange(Boolean(controls?.downtime.enabled), start, event.target.value) }} /></label><span className="schedule-preset"><Clock3 size={13} /> A quiet {start} – {end}</span></div><div className="downtime-helper"><Sparkles size={13} /><span>Downtime never blocks an app — it just gives you a moment to pause.</span></div></Card>
+    <div className="control-section-heading allow-heading"><div><span className="section-kicker">A FEW EXCEPTIONS</span><h2>Always allowed</h2><p>Keep the essentials close, even during downtime.</p></div><label className="search-field allow-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an app" />{query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={13} /></button>}</label></div>
+    <Card className="allow-list">{eligibleApps.length ? eligibleApps.map((item) => {
+      const allowed = controls?.alwaysAllowedIds.includes(item.id) ?? false
+      return <div className="allow-row" key={item.id}><AppAvatar name={item.name} category={item.category} icon={icons[item.id]} /><div className="allow-app"><strong>{item.name}</strong><span><i style={{ background: item.categoryColor }} />{item.category}</span></div><label className="allow-check"><input type="checkbox" checked={allowed} onChange={(event) => void onAllowChange(item.id, event.target.checked)} /><span><Check size={11} /></span><strong>{allowed ? 'Always allowed' : 'Allow during downtime'}</strong></label></div>
+    }) : <div className="controls-empty compact"><strong>No apps match that search.</strong></div>}</Card>
+  </>
+}
+
+function SettingsPage({ paused, onPause, onSeedDemo, onDeleteAll }: {
+  paused: boolean
+  onPause: () => void
+  onSeedDemo: () => Promise<void>
+  onDeleteAll: () => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const seedDemo = async () => { setBusy(true); await onSeedDemo(); setBusy(false) }
+  const deleteAll = async () => { setBusy(true); await onDeleteAll(); setBusy(false); setConfirming(false) }
+  return <>
+    <div className="subpage-heading"><div className="eyebrow"><span className="eyebrow-spark"><Settings2 size={12} /></span> YOUR SPACE</div><h1>Make it feel <em>like yours.</em></h1><p>Small choices, thoughtfully kept on your device.</p></div>
+    <div className="settings-list">
+      <Card className="settings-row"><span className="settings-row-icon tracking"><Activity size={16} /></span><div className="settings-row-copy"><strong>Screen time tracking</strong><span>{paused ? 'Paused — your day is not being recorded.' : 'Running quietly in the background.'}</span></div><button className="settings-action-button" onClick={onPause}>{paused ? <><Play size={13} /> Resume</> : <><Pause size={13} /> Pause</>}</button></Card>
+      <Card className="settings-row"><span className="settings-row-icon sample"><Sparkles size={16} /></span><div className="settings-row-copy"><strong>Sample activity</strong><span>Fill your dashboard with a believable two-week sample.</span></div><button className="settings-action-button" disabled={busy} onClick={() => void seedDemo()}><Activity size={13} /> Refresh sample</button></Card>
+      <Card className="settings-row danger-setting"><span className="settings-row-icon danger"><Trash2 size={15} /></span><div className="settings-row-copy"><strong>Delete all data</strong><span>Remove tracked sessions, apps, limits, and allowed apps from this device.</span></div><button className="danger-button" onClick={() => setConfirming(true)}><Trash2 size={13} /> Delete data</button></Card>
+    </div>
+    <Card className="settings-privacy"><ShieldCheck size={16} /><div><strong>Private by design.</strong><span>Stilltime has no accounts, cloud sync, or telemetry. Your SQLite database stays in this computer’s local app data folder.</span></div></Card>
+    {confirming && <div className="modal-backdrop" role="presentation"><section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title"><span className="confirm-icon"><AlertTriangle size={19} /></span><h2 id="delete-title">Delete everything?</h2><p>Your activity history, app list, limits, and always-allowed apps will be removed from this device. This can’t be undone.</p><div className="confirm-actions"><button className="cancel-button" onClick={() => setConfirming(false)}>Keep my data</button><button className="danger-button" disabled={busy} onClick={() => void deleteAll()}><Trash2 size={13} /> Delete everything</button></div></section></div>}
+  </>
+}
+
 function ComingSoon({ section }: { section: Section }) {
   const detail = section === 'Limits'
     ? ['Gentle app limits', 'Create daily time budgets and get a thoughtful nudge when you’re close.']
@@ -227,6 +303,7 @@ function App() {
   const [range, setRange] = useState<TimeRange>('day')
   const [selectedDate, setSelectedDate] = useState(todayKey())
   const [data, setData] = useState<DashboardData | null>(null)
+  const [controls, setControls] = useState<ControlSnapshot | null>(null)
   const [directory, setDirectory] = useState<AppDirectoryEntry[]>([])
   const [icons, setIcons] = useState<Record<number, string | null>>({})
   const [loading, setLoading] = useState(true)
@@ -240,11 +317,17 @@ function App() {
     setLoading(false)
   }, [range, selectedDate])
 
+  const refreshControls = useCallback(async () => {
+    setControls(await window.stilltime.getControls())
+  }, [])
+
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => { void refreshControls() }, [refreshControls])
   useEffect(() => window.stilltime.onStatus((status) => {
     setPaused(!status.tracking)
     void refresh()
-  }), [refresh])
+    if (section === 'Limits' || section === 'Downtime') void refreshControls()
+  }), [refresh, refreshControls, section])
   useEffect(() => { void window.stilltime.getAppDirectory().then(setDirectory) }, [])
   useEffect(() => {
     let cancelled = false
@@ -267,8 +350,35 @@ function App() {
     setDirectory((items) => items.map((item) => item.id === id ? { ...item, category, categoryColor: categoryFallbacks[category] } : item))
     await refresh()
   }
+  const handleLimitSave = async (type: LimitTargetType, id: number, seconds: number) => {
+    await window.stilltime.setLimit(type, id, seconds)
+    await refreshControls()
+  }
+  const handleLimitRemove = async (limit: ControlSnapshot['limits'][number]) => {
+    await window.stilltime.setLimit(limit.targetType, limit.targetId, null)
+    await refreshControls()
+  }
+  const handleDowntimeChange = async (enabled: boolean, start: string, end: string) => {
+    await window.stilltime.setDowntime({ enabled, start, end })
+    await refreshControls()
+  }
+  const handleAlwaysAllowed = async (appId: number, allowed: boolean) => {
+    await window.stilltime.setAlwaysAllowed(appId, allowed)
+    await refreshControls()
+  }
+  const handleSeedDemo = async () => {
+    await window.stilltime.seedDemoData()
+    setDirectory(await window.stilltime.getAppDirectory())
+    setIcons({})
+    await Promise.all([refresh(), refreshControls()])
+  }
+  const handleDeleteAll = async () => {
+    await window.stilltime.deleteAllData()
+    setDirectory(await window.stilltime.getAppDirectory())
+    setIcons({})
+    await Promise.all([refresh(), refreshControls()])
+  }
   const trackerText = paused ? 'Tracking paused' : data?.status.idle ? 'Taking a little break' : 'Tracking quietly'
-  const currentDateLabel = dayLabel(selectedDate, range)
 
   return <div className={`app-shell theme-${appearance}`}>
     <aside className="sidebar">
@@ -285,7 +395,9 @@ function App() {
         {section === 'Overview' && <Overview data={data} range={range} selectedDate={selectedDate} setRange={setRange} setSelectedDate={setSelectedDate} icons={icons} />}
         {section === 'Apps' && <AppsPage directory={directory} data={data} icons={icons} onCategoryChange={(id, category) => void handleCategoryChange(id, category)} />}
         {section === 'Categories' && <CategoriesPage data={data} directory={directory} />}
-        {['Limits', 'Downtime', 'Settings'].includes(section) && <ComingSoon section={section} />}
+        {section === 'Limits' && <LimitsPage controls={controls} onSave={handleLimitSave} onRemove={handleLimitRemove} />}
+        {section === 'Downtime' && <DowntimePage controls={controls} icons={icons} onScheduleChange={handleDowntimeChange} onAllowChange={handleAlwaysAllowed} />}
+        {section === 'Settings' && <SettingsPage paused={paused} onPause={() => void window.stilltime.setPaused(!paused)} onSeedDemo={handleSeedDemo} onDeleteAll={handleDeleteAll} />}
         <footer className="page-footer"><span>Made for a little more mindful time.</span><span><ShieldCheck size={12} /> Your day, stored locally</span></footer>
       </div>
     </main>

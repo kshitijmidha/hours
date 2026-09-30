@@ -1,5 +1,6 @@
 export type CategoryName = 'Productivity' | 'Social' | 'Entertainment' | 'Development' | 'Browsing' | 'Other'
 export type TimeRange = 'day' | 'week'
+export type LimitTargetType = 'app' | 'category'
 
 export interface UsageApp {
   id: number
@@ -30,6 +31,7 @@ export interface TrackerStatus {
   tracking: boolean
   idle: boolean
   currentApp: string | null
+  currentAppId: number | null
   todaySeconds: number
 }
 
@@ -55,6 +57,31 @@ export interface DashboardData {
   status: TrackerStatus
 }
 
+export interface AppLimit {
+  id: number
+  targetType: LimitTargetType
+  targetId: number
+  targetName: string
+  color: string
+  dailyLimitSeconds: number
+  usedSeconds: number
+  percent: number
+}
+
+export interface DowntimeSettings {
+  enabled: boolean
+  start: string
+  end: string
+}
+
+export interface ControlSnapshot {
+  limits: AppLimit[]
+  apps: AppDirectoryEntry[]
+  categories: Array<{ id: number; name: CategoryName; color: string }>
+  alwaysAllowedIds: number[]
+  downtime: DowntimeSettings
+}
+
 export interface AppDirectoryEntry {
   id: number
   name: string
@@ -69,6 +96,11 @@ export interface StilltimeBridge {
   getAppIcon: (appId: number) => Promise<string | null>
   setAppCategory: (appId: number, category: CategoryName) => Promise<void>
   seedDemoData: () => Promise<void>
+  getControls: () => Promise<ControlSnapshot>
+  setLimit: (targetType: LimitTargetType, targetId: number, dailyLimitSeconds: number | null) => Promise<void>
+  setDowntime: (settings: DowntimeSettings) => Promise<void>
+  setAlwaysAllowed: (appId: number, allowed: boolean) => Promise<void>
+  deleteAllData: () => Promise<void>
   setPaused: (paused: boolean) => Promise<void>
   onStatus: (callback: (status: TrackerStatus) => void) => () => void
 }

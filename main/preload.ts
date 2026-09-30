@@ -7,6 +7,11 @@ const bridge: StilltimeBridge = {
   getAppIcon: (appId) => ipcRenderer.invoke('apps:icon', appId),
   setAppCategory: (appId, category) => ipcRenderer.invoke('apps:set-category', appId, category),
   seedDemoData: () => ipcRenderer.invoke('demo:seed'),
+  getControls: () => ipcRenderer.invoke('controls:get'),
+  setLimit: (targetType, targetId, seconds) => ipcRenderer.invoke('limits:set', targetType, targetId, seconds),
+  setDowntime: (settings) => ipcRenderer.invoke('downtime:set', settings),
+  setAlwaysAllowed: (appId, allowed) => ipcRenderer.invoke('downtime:allow', appId, allowed),
+  deleteAllData: () => ipcRenderer.invoke('data:delete'),
   setPaused: (paused) => ipcRenderer.invoke('tracker:pause', paused),
   onStatus: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, status: TrackerStatus) => callback(status)

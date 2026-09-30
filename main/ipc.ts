@@ -18,5 +18,15 @@ export function registerIpc(store: Store, tracker: ActivityTracker) {
   })
   ipcMain.handle('apps:set-category', (_event, appId: number, category: CategoryName) => store.setAppCategory(appId, category))
   ipcMain.handle('demo:seed', () => store.seedDemoData())
+  ipcMain.handle('controls:get', () => store.getControls())
+  ipcMain.handle('limits:set', (_event, targetType: 'app' | 'category', targetId: number, seconds: number | null) => store.setLimit(targetType, targetId, seconds))
+  ipcMain.handle('downtime:set', (_event, settings: { enabled: boolean; start: string; end: string }) => store.setDowntime(settings))
+  ipcMain.handle('downtime:allow', (_event, appId: number, allowed: boolean) => store.setAlwaysAllowed(appId, allowed))
+  ipcMain.handle('data:delete', () => {
+    const wasTracking = tracker.getStatus().tracking
+    tracker.setPaused(true)
+    store.deleteAllData()
+    if (wasTracking) tracker.setPaused(false)
+  })
   ipcMain.handle('tracker:pause', (_event, paused: boolean) => tracker.setPaused(paused))
 }
