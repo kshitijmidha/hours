@@ -2,6 +2,8 @@ import { Notification } from 'electron'
 import type { Store } from './database'
 import type { TrackerStatus } from '../shared/types'
 
+const CHECK_INTERVAL_MS = 30_000
+
 function localDay(date: Date) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
 }
@@ -26,37 +28,42 @@ function notify(title: string, body: string) {
 
 export class BoundaryMonitor {
   private checking = false
+  private lastCheck = 0
 
   constructor(private store: Store) {}
 
   async check(status: TrackerStatus) {
     if (!status.tracking || this.checking) return
+    const now = Date.now()
+    if (now - this.lastCheck < CHECK_INTERVAL_MS) return
+    this.lastCheck = now
     this.checking = true
     try {
       const controls = this.store.getControls()
-      const now = new Date()
-      const date = localDay(now)
+      const date = localDay(new Date())
       for (const limit of controls.limits) {
         for (const threshold of [80, 100]) {
           if (limit.percent < threshold || !this.store.recordLimitNotification(limit.id, date, threshold)) continue
+          const minutes = Math.round(limit.dailyLimitSeconds / 60)
           notify(
             threshold === 100 ? 'Daily limit reached' : 'A gentle heads-up',
             threshold === 100
-              ? `${limit.targetName} reached its ${Math.round(limit.dailyLimitSeconds / 60)} minute daily limit.`
+              ? `${limit.targetName} reached its ${minutes} minute daily limit.`
               : `${limit.targetName} has used ${threshold}% of its daily limit.`,
           )
         }
       }
 
-      if (!status.currentAppId || !controls.downtime.enabled || !isWithinDowntime(now, controls.downtime.start, controls.downtime.end)) return
+      const current = new Date()
+      if (!status.currentAppId || !controls.downtime.enabled || !isWithinDowntime(current, controls.downtime.start, controls.downtime.end)) return
       if (this.store.isAlwaysAllowed(status.currentAppId)) return
       const end = timeMinutes(controls.downtime.end)
-      const beforeEnd = now.getHours() * 60 + now.getMinutes() < end
-      const windowDate = new Date(now)
+      const beforeEnd = current.getHours() * 60 + current.getMinutes() < end
+      const windowDate = new Date(current)
       if (beforeEnd && timeMinutes(controls.downtime.start) >= end) windowDate.setDate(windowDate.getDate() - 1)
       const windowKey = `${localDay(windowDate)}:${controls.downtime.start}-${controls.downtime.end}`
       if (this.store.recordDowntimeNotification(status.currentAppId, windowKey)) {
-        notify('Downtime is on', `${this.store.getAppName(status.currentAppId)} is on. Your always-allowed apps are still available.`)
+        notify('Downtime is on', `${this.store.getAppName(status.currentAppId)} is open. Your always-allowed apps stay available.`)
       }
     } catch (error) {
       console.error('[stilltime] Could not check daily boundaries:', error)

@@ -1,58 +1,28 @@
 import { powerMonitor } from 'electron'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-import type { Store, ActiveSession } from './database'
+import type { Store } from './database'
 import type { TrackerStatus } from '../shared/types'
+import { getForegroundWindow } from './windows-foreground'
 
 const POLL_INTERVAL_MS = 2_000
+const FLUSH_INTERVAL_MS = 10_000
 const IDLE_AFTER_SECONDS = 120
-const execFileAsync = promisify(execFile)
+const STATUS_THROTTLE_MS = 1_500
 
-interface ActiveWindowInfo {
-  title?: string
-  owner?: { name?: string; path?: string }
-}
-
-async function readWindowsActiveWindow(): Promise<ActiveWindowInfo | undefined> {
-  const script = `$source = @"
-using System;
-using System.Runtime.InteropServices;
-using System.Text;
-public static class StilltimeWindow {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-}
-"@
-Add-Type -TypeDefinition $source -ErrorAction SilentlyContinue
-$handle = [StilltimeWindow]::GetForegroundWindow()
-$processId = 0
-[void][StilltimeWindow]::GetWindowThreadProcessId($handle, [ref]$processId)
-$p = Get-Process -Id $processId -ErrorAction SilentlyContinue
-if ($p) {
-  $text = New-Object System.Text.StringBuilder 1024
-  [void][StilltimeWindow]::GetWindowText($handle, $text, $text.Capacity)
-  $path = ''
-  try { $path = $p.Path } catch {}
-  [PSCustomObject]@{ title = $text.ToString(); owner = @{ name = $p.ProcessName; path = $path } } | ConvertTo-Json -Compress -Depth 3
-}`
-  const { stdout } = await execFileAsync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
-    windowsHide: true,
-    timeout: 1_500,
-    maxBuffer: 64 * 1024,
-  })
-  if (!stdout.trim()) return undefined
-  return JSON.parse(stdout) as ActiveWindowInfo
+interface OpenSession {
+  id: number
+  appId: number
+  startedAt: number
+  title: string
 }
 
 export class ActivityTracker {
-  private timer: NodeJS.Timeout | undefined
-  private activeSession: ActiveSession | null = null
-  private currentTitle = ''
-  private currentApp: string | null = null
-  private currentAppId: number | null = null
+  private pollTimer: NodeJS.Timeout | undefined
+  private flushTimer: NodeJS.Timeout | undefined
+  private session: OpenSession | null = null
   private paused = false
   private idle = false
+  private currentAppId: number | null = null
+  private currentApp: string | null = null
   private listeners = new Set<(status: TrackerStatus) => void>()
   private lastStatusPush = 0
   private polling = false
@@ -61,17 +31,20 @@ export class ActivityTracker {
   constructor(private store: Store) {}
 
   start() {
-    if (this.timer) return
+    if (this.pollTimer) return
     const lifecycle = ++this.lifecycle
     void this.poll(lifecycle)
-    this.timer = setInterval(() => void this.poll(this.lifecycle), POLL_INTERVAL_MS)
+    this.pollTimer = setInterval(() => void this.poll(this.lifecycle), POLL_INTERVAL_MS)
+    this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL_MS)
   }
 
   stop() {
     this.lifecycle++
-    if (this.timer) clearInterval(this.timer)
-    this.timer = undefined
-    this.closeActive()
+    if (this.pollTimer) clearInterval(this.pollTimer)
+    if (this.flushTimer) clearInterval(this.flushTimer)
+    this.pollTimer = undefined
+    this.flushTimer = undefined
+    this.endSession(Date.now())
     this.emit(true)
   }
 
@@ -79,8 +52,12 @@ export class ActivityTracker {
     if (this.paused === paused) return
     this.paused = paused
     this.lifecycle++
-    if (paused) this.closeActive()
-    else void this.poll(this.lifecycle)
+    if (paused) {
+      this.endSession(Date.now())
+      this.flush()
+    } else {
+      void this.poll(this.lifecycle)
+    }
     this.emit(true)
   }
 
@@ -90,70 +67,85 @@ export class ActivityTracker {
   }
 
   getStatus(): TrackerStatus {
-    const snapshot = this.store.getTodaySnapshot(!this.paused, this.idle, this.currentApp, this.currentAppId)
-    return snapshot.status
+    return this.store.getTodayStatus(!this.paused, this.idle, this.currentApp, this.currentAppId)
   }
 
-  private async poll(lifecycle = this.lifecycle) {
+  handleInterruption(reason: 'suspend' | 'lock') {
+    this.endSession(Date.now())
+    this.idle = true
+    this.flush()
+    this.emit(true)
+    void reason
+  }
+
+  private async poll(lifecycle: number) {
     if (this.paused || this.polling) return
     this.polling = true
     try {
-      const idleNow = powerMonitor.getSystemIdleTime() >= IDLE_AFTER_SECONDS
-      if (idleNow) {
+      const idleSeconds = powerMonitor.getSystemIdleTime()
+      if (idleSeconds >= IDLE_AFTER_SECONDS) {
+        if (!this.idle || this.session) {
+          // Stop exactly when input stopped, not when the poll noticed it.
+          this.endSession(Date.now() - idleSeconds * 1000)
+          this.flush()
+        }
         this.idle = true
-        this.closeActive()
         this.emit()
         return
       }
       this.idle = false
-      // Load lazily so Electron can start even if the optional native module is unavailable.
-      const { default: activeWin } = await import('active-win')
-      let active = await activeWin() as ActiveWindowInfo | undefined
+
+      const foreground = await getForegroundWindow()
       if (this.paused || this.lifecycle !== lifecycle) return
-      // active-win ships a native addon which can be unavailable in unsigned/dev builds.
-      // Use the Windows foreground-window API as a transparent local fallback.
-      if (!active && process.platform === 'win32') active = await readWindowsActiveWindow()
-      if (this.paused || this.lifecycle !== lifecycle) return
-      if (!active?.owner?.name) {
-        this.closeActive()
+      if (!foreground) {
+        this.endSession(Date.now())
         this.emit()
         return
       }
-      const name = active.owner.name.replace(/\.exe$/i, '') || 'Unknown app'
-      const executablePath = active.owner.path || `unknown:${name.toLowerCase()}`
-      const appId = this.store.upsertApp(name, executablePath)
-      const title = active.title || ''
-      if (!this.activeSession || this.activeSession.appId !== appId || this.currentTitle !== title) {
-        this.closeActive()
-        this.activeSession = this.store.startSession(appId, title)
-      } else {
-        this.store.updateSession(this.activeSession, title)
+
+      const appId = this.store.upsertApp(foreground.name, foreground.path ?? `unknown:${foreground.executable.replace(/\.exe$/i, '').toLowerCase()}`)
+      if (!this.session || this.session.appId !== appId) {
+        this.endSession(Date.now())
+        this.session = {
+          id: this.store.startSession(appId, foreground.title),
+          appId,
+          startedAt: Date.now(),
+          title: foreground.title,
+        }
+      } else if (this.session.title !== foreground.title) {
+        this.session.title = foreground.title
       }
-      this.currentTitle = title
-      this.currentApp = name
+
       this.currentAppId = appId
+      this.currentApp = foreground.name
       this.emit()
     } catch (error) {
-      // A denied OS permission or a transient API error should not stop the tracker.
-      console.warn('[stilltime] Could not read the active window:', error)
-      this.closeActive()
+      console.warn('[stilltime] Could not read the foreground window:', error)
+      this.endSession(Date.now())
       this.emit()
     } finally {
       this.polling = false
     }
   }
 
-  private closeActive() {
-    if (this.activeSession) this.store.endSession(this.activeSession, this.currentTitle)
-    this.activeSession = null
-    this.currentTitle = ''
-    this.currentApp = null
+  private flush() {
+    if (!this.session) return
+    const durationSeconds = Math.max(0, Math.floor((Date.now() - this.session.startedAt) / 1000))
+    this.store.progressSession(this.session.id, this.session.title, durationSeconds)
+  }
+
+  private endSession(endedAt: number) {
+    if (!this.session) return
+    const durationSeconds = Math.max(0, Math.floor((endedAt - this.session.startedAt) / 1000))
+    this.store.finishSession(this.session.id, this.session.title, new Date(endedAt), durationSeconds)
+    this.session = null
     this.currentAppId = null
+    this.currentApp = null
   }
 
   private emit(force = false) {
     const now = Date.now()
-    if (!force && now - this.lastStatusPush < 1500) return
+    if (!force && now - this.lastStatusPush < STATUS_THROTTLE_MS) return
     this.lastStatusPush = now
     const status = this.getStatus()
     for (const listener of this.listeners) listener(status)

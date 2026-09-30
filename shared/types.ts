@@ -1,6 +1,21 @@
 export type CategoryName = 'Productivity' | 'Social' | 'Entertainment' | 'Development' | 'Browsing' | 'Other'
 export type TimeRange = 'day' | 'week'
 export type LimitTargetType = 'app' | 'category'
+export type AppearancePreference = 'system' | 'light' | 'dark'
+
+export interface TrackerStatus {
+  tracking: boolean
+  idle: boolean
+  currentApp: string | null
+  currentAppId: number | null
+  todaySeconds: number
+}
+
+export interface TrendPoint {
+  date: string
+  label: string
+  seconds: number
+}
 
 export interface UsageApp {
   id: number
@@ -27,21 +42,6 @@ export interface UsageBucket {
   categories: Record<CategoryName, number>
 }
 
-export interface TrackerStatus {
-  tracking: boolean
-  idle: boolean
-  currentApp: string | null
-  currentAppId: number | null
-  todaySeconds: number
-}
-
-export interface TodaySnapshot {
-  status: TrackerStatus
-  totalSeconds: number
-  appCount: number
-  sessions: Array<{ appName: string; durationSeconds: number; startedAt: string }>
-}
-
 export interface DashboardData {
   range: TimeRange
   selectedDate: string
@@ -53,8 +53,17 @@ export interface DashboardData {
   apps: UsageApp[]
   categories: CategoryUsage[]
   buckets: UsageBucket[]
+  trend: TrendPoint[]
   hasDemoData: boolean
   status: TrackerStatus
+}
+
+export interface AppDirectoryEntry {
+  id: number
+  name: string
+  executablePath: string
+  category: CategoryName
+  categoryColor: string
 }
 
 export interface AppLimit {
@@ -82,23 +91,18 @@ export interface ControlSnapshot {
   downtime: DowntimeSettings
 }
 
-export type AppearancePreference = 'system' | 'light' | 'dark'
-
 export interface AppSettings {
   appearance: AppearancePreference
-  launchAtLogin: boolean
+  autoStart: boolean
   onboardingComplete: boolean
-  platform: string
-  screenRecording: string
-  accessibility: boolean
+  version: string
 }
 
-export interface AppDirectoryEntry {
-  id: number
-  name: string
-  executablePath: string
-  category: CategoryName
-  categoryColor: string
+export interface ThemePayload {
+  dark: boolean
+  titlebar: string
+  symbol: string
+  background: string
 }
 
 export interface StilltimeBridge {
@@ -107,6 +111,7 @@ export interface StilltimeBridge {
   getAppIcon: (appId: number) => Promise<string | null>
   setAppCategory: (appId: number, category: CategoryName) => Promise<void>
   seedDemoData: () => Promise<void>
+  removeDemoData: () => Promise<void>
   getControls: () => Promise<ControlSnapshot>
   setLimit: (targetType: LimitTargetType, targetId: number, dailyLimitSeconds: number | null) => Promise<void>
   setDowntime: (settings: DowntimeSettings) => Promise<void>
@@ -114,9 +119,9 @@ export interface StilltimeBridge {
   deleteAllData: () => Promise<void>
   getSettings: () => Promise<AppSettings>
   setAppearance: (appearance: AppearancePreference) => Promise<void>
-  setLaunchAtLogin: (enabled: boolean) => Promise<void>
+  setAutoStart: (enabled: boolean) => Promise<void>
   completeOnboarding: () => Promise<void>
-  openPrivacySettings: (kind: 'screen' | 'accessibility') => Promise<void>
+  syncTheme: (payload: ThemePayload) => Promise<void>
   exportCsv: () => Promise<boolean>
   setPaused: (paused: boolean) => Promise<void>
   onStatus: (callback: (status: TrackerStatus) => void) => () => void
