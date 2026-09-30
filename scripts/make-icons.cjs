@@ -9,8 +9,7 @@ const SS = 4 // supersampling factor
 const PULSE = [
   [0.18, 0.52], [0.34, 0.52], [0.43, 0.33], [0.53, 0.70], [0.62, 0.43], [0.70, 0.52], [0.82, 0.52],
 ]
-const TOP = [0x5c, 0xa7, 0xff]
-const BOTTOM = [0x76, 0x59, 0xe8]
+const TILE = [0x0a, 0x84, 0xff]
 
 function insideRoundedRect(x, y, size, radius) {
   const cx = Math.min(Math.max(x, radius), size - radius)
@@ -55,10 +54,9 @@ function renderIcon(size) {
           const px = x + (sx + 0.5) * sub
           const py = y + (sy + 0.5) * sub
           if (!insideRoundedRect(px, py, size, radius)) continue
-          const k = py / size
-          let cr = TOP[0] + (BOTTOM[0] - TOP[0]) * k
-          let cg = TOP[1] + (BOTTOM[1] - TOP[1]) * k
-          let cb = TOP[2] + (BOTTOM[2] - TOP[2]) * k
+          let cr = TILE[0]
+          let cg = TILE[1]
+          let cb = TILE[2]
           if (distanceToPulse(px / size, py / size) * size <= strokeRadius) {
             cr = 255
             cg = 255

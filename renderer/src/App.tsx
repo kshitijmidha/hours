@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, Command, FolderKanban, Gauge, LayoutDashboard, Moon, Pause, Play, Settings2, Sun } from 'lucide-react'
+import { Command, FolderKanban, Gauge, LayoutDashboard, Moon, Pause, Play, Settings2, Sun } from 'lucide-react'
 import { Onboarding } from './Onboarding'
+import { Logo } from './components'
 import { OverviewPage } from './pages/OverviewPage'
 import { AppsPage } from './pages/AppsPage'
 import { CategoriesPage } from './pages/CategoriesPage'
@@ -183,7 +184,7 @@ export default function App() {
     <div className={`app-shell ${isDark ? 'theme-dark' : ''}`}>
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark"><Activity size={16} strokeWidth={2.4} /></span>
+          <Logo size={24} />
           <span>stilltime</span>
         </div>
         <nav className="nav">

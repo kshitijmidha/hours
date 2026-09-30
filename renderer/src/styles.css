@@ -51,8 +51,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* ---------- Sidebar ---------- */
 .sidebar { width: 212px; flex: 0 0 212px; display: flex; flex-direction: column; padding: 18px 14px 14px; background: var(--surface); border-right: 1px solid var(--border); }
 .brand { display: flex; align-items: center; gap: 9px; padding: 2px 10px 24px; font-size: 14.5px; font-weight: 600; letter-spacing: -0.25px; }
-.brand-mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: #fff; background: #1a1b1f; }
-.theme-dark .brand-mark { background: #f1f1f3; color: #17181c; }
 .nav { flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
 .nav-item { display: flex; align-items: center; gap: 10px; height: 33px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 12.5px; font-weight: 480; text-align: left; transition: background .15s ease, color .15s ease; }
 .nav-item:hover { color: var(--text-secondary); background: var(--surface-soft); }
@@ -281,9 +279,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 .onboarding-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: var(--bg); animation: fade .2s ease-out both; }
 .onboarding { width: min(400px, 100%); animation: rise .28s cubic-bezier(.2, .8, .3, 1) both; }
-.onboarding-mark { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 28px; border-radius: 13px; color: #fff; background: #1a1b1f; }
-.theme-dark .onboarding-mark { background: #f1f1f3; color: #17181c; }
-.onboarding-halo, .onboarding-logo { display: none; }
+.onboarding-mark { display: inline-flex; margin-bottom: 28px; }
 .onboarding h1 { margin: 0 0 12px; font-size: 26px; line-height: 1.16; font-weight: 630; letter-spacing: -1px; }
 .onboarding h1 em { font-style: normal; color: var(--accent); }
 .onboarding-lead { margin: 0 0 28px; font-size: 13px; line-height: 1.72; color: var(--text-muted); }
