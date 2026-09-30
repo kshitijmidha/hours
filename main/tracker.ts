@@ -108,7 +108,7 @@ export class ActivityTracker {
         this.emit()
         return
       }
-      // Stilltime should never count its own window: it is not something you "use".
+      // Hours should never count its own window: it is not something you "use".
       if (this.isSelf(foreground.processId, foreground.path)) {
         this.endSession(Date.now())
         this.currentApp = null
@@ -134,7 +134,7 @@ export class ActivityTracker {
       this.currentApp = foreground.name
       this.emit()
     } catch (error) {
-      console.warn('[stilltime] Could not read the foreground window:', error)
+      console.warn('[hours] Could not read the foreground window:', error)
       this.endSession(Date.now())
       this.emit()
     } finally {

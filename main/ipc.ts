@@ -37,8 +37,8 @@ export function registerIpc(store: Store, tracker: ActivityTracker, getWindow: (
   })
   ipcMain.handle('data:export-csv', async () => {
     const result = await dialog.showSaveDialog({
-      title: 'Export Stilltime activity',
-      defaultPath: join(app.getPath('documents'), `stilltime-activity-${new Date().toISOString().slice(0, 10)}.csv`),
+      title: 'Export Hours activity',
+      defaultPath: join(app.getPath('documents'), `hours-activity-${new Date().toISOString().slice(0, 10)}.csv`),
       filters: [{ name: 'CSV file', extensions: ['csv'] }],
     })
     if (result.canceled || !result.filePath) return false

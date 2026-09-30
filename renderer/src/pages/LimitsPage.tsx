@@ -103,7 +103,7 @@ export function LimitsPage({ controls, onSave, onRemove }: {
             })}
           </div>
         ) : (
-          <EmptyState title="No limits yet" note="Add a daily budget above and Stilltime will remind you when it matters." />
+          <EmptyState title="No limits yet" note="Add a daily budget above and Hours will remind you when it matters." />
         )}
       </section>
     </>

@@ -1,4 +1,4 @@
-/* Generates Stilltime's app icon (.ico/.png) and tray icon without any dependencies. */
+/* Generates Hours' app icon (.ico/.png) and tray icon without any dependencies. */
 const { mkdirSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const zlib = require('node:zlib')
@@ -7,17 +7,9 @@ const OUT_DIR = join(__dirname, '..', 'build')
 const SS = 4 // supersampling factor
 
 const PULSE = [
-  [0.18, 0.52], [0.34, 0.52], [0.43, 0.33], [0.53, 0.70], [0.62, 0.43], [0.70, 0.52], [0.82, 0.52],
+  [0.10, 0.52], [0.30, 0.52], [0.40, 0.28], [0.54, 0.74], [0.64, 0.40], [0.72, 0.52], [0.90, 0.52],
 ]
-const TILE = [0x0a, 0x84, 0xff]
-
-function insideRoundedRect(x, y, size, radius) {
-  const cx = Math.min(Math.max(x, radius), size - radius)
-  const cy = Math.min(Math.max(y, radius), size - radius)
-  const dx = x - cx
-  const dy = y - cy
-  return dx * dx + dy * dy <= radius * radius
-}
+const STROKE = [0x0a, 0x84, 0xff]
 
 function distanceToPulse(x, y) {
   let best = Infinity
@@ -39,43 +31,26 @@ function distanceToPulse(x, y) {
 }
 
 function renderIcon(size) {
-  const radius = size * 0.225
-  const strokeRadius = size * 0.045
+  const strokeRadius = size * 0.056
   const pixels = new Uint8ClampedArray(size * size * 4)
   const sub = 1 / SS
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      let r = 0
-      let g = 0
-      let b = 0
       let a = 0
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
           const px = x + (sx + 0.5) * sub
           const py = y + (sy + 0.5) * sub
-          if (!insideRoundedRect(px, py, size, radius)) continue
-          let cr = TILE[0]
-          let cg = TILE[1]
-          let cb = TILE[2]
-          if (distanceToPulse(px / size, py / size) * size <= strokeRadius) {
-            cr = 255
-            cg = 255
-            cb = 255
-          }
-          r += cr
-          g += cg
-          b += cb
-          a += 255
+          if (distanceToPulse(px / size, py / size) * size <= strokeRadius) a += 255
         }
       }
       const samples = SS * SS
       const index = (y * size + x) * 4
       const alpha = a / samples
-      const coverage = alpha / 255
-      if (coverage === 0) continue
-      pixels[index] = Math.round(r / samples / coverage)
-      pixels[index + 1] = Math.round(g / samples / coverage)
-      pixels[index + 2] = Math.round(b / samples / coverage)
+      if (alpha === 0) continue
+      pixels[index] = STROKE[0]
+      pixels[index + 1] = STROKE[1]
+      pixels[index + 2] = STROKE[2]
       pixels[index + 3] = Math.round(alpha)
     }
   }
@@ -181,4 +156,4 @@ writeFileSync(join(OUT_DIR, 'icon.png'), encodePng(big.rgba, 256))
 const tray = rendered.find((image) => image.size === 32)
 writeFileSync(join(OUT_DIR, 'tray.png'), encodePng(tray.rgba, 32))
 
-console.log(`Stilltime icons written to ${OUT_DIR}`)
+console.log(`Hours icons written to ${OUT_DIR}`)

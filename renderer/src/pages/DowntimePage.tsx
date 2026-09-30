@@ -95,7 +95,7 @@ export function DowntimePage({ controls, icons, onScheduleChange, onAllowChange 
             })}
           </div>
         ) : (
-          <EmptyState title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Stilltime has seen them.'} />
+          <EmptyState title="No apps to show" note={query ? 'Try a different search.' : 'Apps appear here once Hours has seen them.'} />
         )}
       </section>
     </>

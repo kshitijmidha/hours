@@ -85,7 +85,7 @@ export class Store {
   private appCache = new Map<string, number>()
 
   constructor() {
-    this.db = new Database(join(app.getPath('userData'), 'stilltime.db'))
+    this.db = new Database(join(app.getPath('userData'), 'hours.db'))
     this.db.pragma('journal_mode = WAL')
     this.db.pragma('synchronous = NORMAL')
     this.db.pragma('foreign_keys = ON')
@@ -195,9 +195,9 @@ export class Store {
       })
       reset()
     }
-    // Forget any history recorded for Stilltime itself (from older builds that tracked everything).
+    // Forget any history recorded for Hours itself (from older builds that tracked everything).
     const selfApps = this.db.prepare(`
-      SELECT id FROM apps WHERE LOWER(executable_path) = ? OR LOWER(name) = 'stilltime'
+      SELECT id FROM apps WHERE LOWER(executable_path) = ? OR LOWER(name) IN ('stilltime', 'hours')
     `).all(process.execPath.toLowerCase()) as Array<{ id: number }>
     if (selfApps.length) {
       const removeSelf = this.db.transaction(() => {

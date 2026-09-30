@@ -51,7 +51,7 @@ export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoSt
             <strong>Start with Windows</strong>
             <span>Launches quietly into the tray when you log in, so tracking never misses a day.</span>
           </div>
-          <Switch checked={settings?.autoStart ?? true} label="Start Stilltime with Windows" onChange={(next) => void onAutoStart(next)} />
+          <Switch checked={settings?.autoStart ?? true} label="Start Hours with Windows" onChange={(next) => void onAutoStart(next)} />
         </div>
 
         <div className="setting-row">
@@ -93,7 +93,7 @@ export function SettingsPage({ paused, settings, onPause, onAppearance, onAutoSt
       {notice && <p className="notice">{notice}</p>}
 
       <p className="about-text">
-        Private by design — Stilltime reads only the foreground app and idle timer through Windows APIs, and stores
+        Private by design — Hours reads only the foreground app and idle timer through Windows APIs, and stores
         everything in a local SQLite database. No accounts, no cloud, no telemetry. Version {settings?.version ?? '—'}.
       </p>
 

@@ -6,12 +6,11 @@ import type { CategoryName, TimeRange } from '../../shared/types'
 export function Logo({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
-      <rect width="32" height="32" rx="7.2" fill="#0a84ff" />
       <path
-        d="M5.76 16.64 L10.88 16.64 L13.76 10.56 L16.96 22.4 L19.84 13.76 L22.4 16.64 L26.24 16.64"
+        d="M3.2 16.64 L9.6 16.64 L12.8 8.96 L17.28 23.68 L20.48 12.8 L23.04 16.64 L28.8 16.64"
         fill="none"
-        stroke="#ffffff"
-        strokeWidth="2.9"
+        stroke="#0a84ff"
+        strokeWidth="3.52"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

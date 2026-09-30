@@ -14,7 +14,7 @@ export function Onboarding({ onContinue }: { onContinue: () => Promise<void> }) 
       <section className="onboarding" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div className="onboarding-mark"><Logo size={44} /></div>
         <h1 id="welcome-title">A calmer view of<br />your <em>screen time.</em></h1>
-        <p className="onboarding-lead">Stilltime lives in your tray and quietly notes the app in front of you — so you can see where your days actually go.</p>
+        <p className="onboarding-lead">Hours lives in your tray and quietly notes the app in front of you — so you can see where your days actually go.</p>
         <div className="onboarding-points">
           <div>
             <span className="onboarding-point-icon"><Clock3 size={14} /></span>

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, Tray } from 'electron'
-import { existsSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { Store } from './database'
 import { ActivityTracker } from './tracker'
@@ -7,7 +7,9 @@ import { BoundaryMonitor } from './controls'
 import { registerIpc } from './ipc'
 import { THEME_COLORS } from '../shared/theme'
 
-app.setAppUserModelId('com.stilltime.desktop')
+// Keep the data directory stable across product renames.
+app.setName('Hours')
+app.setAppUserModelId('com.hours.desktop')
 
 const gotLock = !app.isPackaged || app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -21,6 +23,19 @@ let tracker: ActivityTracker
 let boundaryMonitor: BoundaryMonitor
 let quitting = false
 const startHidden = process.argv.includes('--hidden')
+
+function migrateLegacyData() {
+  const userData = app.getPath('userData')
+  const database = join(userData, 'hours.db')
+  if (existsSync(database)) return
+  const legacy = join(app.getPath('appData'), 'stilltime', 'stilltime.db')
+  if (!existsSync(legacy)) return
+  mkdirSync(userData, { recursive: true })
+  for (const suffix of ['', '-wal', '-shm']) {
+    if (existsSync(legacy + suffix)) copyFileSync(legacy + suffix, database + suffix)
+  }
+  console.log('[hours] Migrated activity data from the previous Stilltime database.')
+}
 
 function assetPath(name: string) {
   if (app.isPackaged) return join(process.resourcesPath, name)
@@ -47,7 +62,7 @@ function createWindow() {
     height: 800,
     minWidth: 940,
     minHeight: 620,
-    title: 'Stilltime',
+    title: 'Hours',
     backgroundColor: THEME_COLORS.light.background,
     icon: windowImage(),
     show: false,
@@ -80,19 +95,19 @@ function trayMenu() {
   return Menu.buildFromTemplate([
     { label: `Today · ${hours}h ${minutes}m`, enabled: false },
     { type: 'separator' },
-    { label: 'Open Stilltime', click: () => { mainWindow?.show(); mainWindow?.focus() } },
+    { label: 'Open Hours', click: () => { mainWindow?.show(); mainWindow?.focus() } },
     {
       label: status.tracking ? 'Pause tracking' : 'Resume tracking',
       click: () => tracker.setPaused(status.tracking),
     },
     { type: 'separator' },
-    { label: 'Quit Stilltime', click: () => { quitting = true; app.quit() } },
+    { label: 'Quit Hours', click: () => { quitting = true; app.quit() } },
   ])
 }
 
 function refreshTray() {
   if (!tray) return
-  tray.setToolTip(tracker.getStatus().currentApp ? `Stilltime — ${tracker.getStatus().currentApp}` : 'Stilltime — tracking')
+  tray.setToolTip(tracker.getStatus().currentApp ? `Hours — ${tracker.getStatus().currentApp}` : 'Hours — tracking')
   tray.setContextMenu(trayMenu())
 }
 
@@ -127,6 +142,7 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
+  migrateLegacyData()
   store = new Store()
   tracker = new ActivityTracker(store)
   boundaryMonitor = new BoundaryMonitor(store)
@@ -164,6 +180,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => { /* tray app: keep running */ })
 
 process.on('uncaughtException', (error) => {
-  console.error('[stilltime] Uncaught error:', error)
-  if (Notification.isSupported()) new Notification({ title: 'Stilltime', body: 'The tracker had a brief hiccup and will keep running.' }).show()
+  console.error('[hours] Uncaught error:', error)
+  if (Notification.isSupported()) new Notification({ title: 'Hours', body: 'The tracker had a brief hiccup and will keep running.' }).show()
 })

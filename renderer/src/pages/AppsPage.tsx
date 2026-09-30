@@ -60,7 +60,7 @@ export function AppsPage({ directory, data, icons, onCategoryChange }: {
           )
         })
       ) : (
-        <EmptyState title="No apps found" note={query ? 'Try a different search.' : 'Apps appear here as soon as Stilltime sees them in front.'} />
+        <EmptyState title="No apps found" note={query ? 'Try a different search.' : 'Apps appear here as soon as Hours sees them in front.'} />
       )}
     </>
   )

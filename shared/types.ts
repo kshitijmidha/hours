@@ -105,7 +105,7 @@ export interface ThemePayload {
   background: string
 }
 
-export interface StilltimeBridge {
+export interface HoursBridge {
   getDashboard: (range: TimeRange, selectedDate: string) => Promise<DashboardData>
   getAppDirectory: () => Promise<AppDirectoryEntry[]>
   getAppIcon: (appId: number) => Promise<string | null>
@@ -129,6 +129,6 @@ export interface StilltimeBridge {
 
 declare global {
   interface Window {
-    stilltime: StilltimeBridge
+    hours: HoursBridge
   }
 }

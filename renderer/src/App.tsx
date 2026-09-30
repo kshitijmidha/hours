@@ -52,19 +52,19 @@ export default function App() {
   const paused = status ? !status.tracking : false
 
   const loadDashboard = async (nextRange = rangeRef.current, nextDate = dateRef.current) => {
-    setDashboard(await window.stilltime.getDashboard(nextRange, nextDate))
+    setDashboard(await window.hours.getDashboard(nextRange, nextDate))
   }
-  const loadControls = async () => setControls(await window.stilltime.getControls())
-  const loadDirectory = async () => setDirectory(await window.stilltime.getAppDirectory())
+  const loadControls = async () => setControls(await window.hours.getControls())
+  const loadDirectory = async () => setDirectory(await window.hours.getAppDirectory())
 
   useEffect(() => { void loadDashboard(range, selectedDate) }, [range, selectedDate])
 
   useEffect(() => {
-    void window.stilltime.getSettings().then(setSettings)
+    void window.hours.getSettings().then(setSettings)
     void loadControls()
     void loadDirectory()
-    void window.stilltime.getDashboard('day', dateKey()).then((data) => setStatus(data.status))
-    const unsubscribe = window.stilltime.onStatus((next) => {
+    void window.hours.getDashboard('day', dateKey()).then((data) => setStatus(data.status))
+    const unsubscribe = window.hours.onStatus((next) => {
       setStatus(next)
       const current = sectionRef.current
       if (current === 'Limits' || current === 'Downtime') void loadControls()
@@ -86,7 +86,7 @@ export default function App() {
   useEffect(() => {
     const colors = THEME_COLORS[isDark ? 'dark' : 'light']
     const payload: ThemePayload = { dark: isDark, ...colors }
-    void window.stilltime.syncTheme(payload)
+    void window.hours.syncTheme(payload)
   }, [isDark])
 
   useEffect(() => {
@@ -97,40 +97,40 @@ export default function App() {
     ])].filter((id) => !known.has(id)).slice(0, 60)
     if (!wanted.length) return
     let cancelled = false
-    void Promise.all(wanted.map(async (id) => [id, await window.stilltime.getAppIcon(id)] as const)).then((pairs) => {
+    void Promise.all(wanted.map(async (id) => [id, await window.hours.getAppIcon(id)] as const)).then((pairs) => {
       if (!cancelled) setIcons((current) => ({ ...current, ...Object.fromEntries(pairs) }))
     })
     return () => { cancelled = true }
   }, [directory, dashboard, icons])
 
   const handleCategoryChange = async (appId: number, category: CategoryName) => {
-    await window.stilltime.setAppCategory(appId, category)
+    await window.hours.setAppCategory(appId, category)
     await Promise.all([loadDirectory(), loadDashboard(), loadControls()])
   }
   const handleRemoveDemo = async () => {
-    await window.stilltime.removeDemoData()
+    await window.hours.removeDemoData()
     setIcons({})
     await Promise.all([loadDashboard(), loadDirectory(), loadControls()])
   }
   const handleSeedDemo = async () => {
-    await window.stilltime.seedDemoData()
+    await window.hours.seedDemoData()
     setIcons({})
     await Promise.all([loadDashboard(), loadDirectory(), loadControls()])
   }
   const handleDeleteAll = async () => {
-    await window.stilltime.deleteAllData()
+    await window.hours.deleteAllData()
     setIcons({})
     await Promise.all([loadDashboard(), loadDirectory(), loadControls()])
   }
   const handleAppearance = async (appearance: AppearancePreference) => {
-    await window.stilltime.setAppearance(appearance)
+    await window.hours.setAppearance(appearance)
     setSettings((current) => (current ? { ...current, appearance } : current))
   }
   const handleAutoStart = async (enabled: boolean) => {
-    await window.stilltime.setAutoStart(enabled)
+    await window.hours.setAutoStart(enabled)
     setSettings((current) => (current ? { ...current, autoStart: enabled } : current))
   }
-  const togglePause = () => void window.stilltime.setPaused(!paused)
+  const togglePause = () => void window.hours.setPaused(!paused)
 
   const page = useMemo(() => {
     switch (section) {
@@ -144,11 +144,11 @@ export default function App() {
         return <LimitsPage
           controls={controls}
           onSave={async (targetType: LimitTargetType, targetId: number, seconds: number) => {
-            await window.stilltime.setLimit(targetType, targetId, seconds)
+            await window.hours.setLimit(targetType, targetId, seconds)
             await loadControls()
           }}
           onRemove={async (limit) => {
-            await window.stilltime.setLimit(limit.targetType, limit.targetId, null)
+            await window.hours.setLimit(limit.targetType, limit.targetId, null)
             await loadControls()
           }}
         />
@@ -157,11 +157,11 @@ export default function App() {
           controls={controls}
           icons={icons}
           onScheduleChange={async (enabled, start, end) => {
-            await window.stilltime.setDowntime({ enabled, start, end })
+            await window.hours.setDowntime({ enabled, start, end })
             await loadControls()
           }}
           onAllowChange={async (appId, allowed) => {
-            await window.stilltime.setAlwaysAllowed(appId, allowed)
+            await window.hours.setAlwaysAllowed(appId, allowed)
             await loadControls()
           }}
         />
@@ -174,7 +174,7 @@ export default function App() {
           onAutoStart={handleAutoStart}
           onSeedDemo={handleSeedDemo}
           onRemoveDemo={handleRemoveDemo}
-          onExport={() => window.stilltime.exportCsv()}
+          onExport={() => window.hours.exportCsv()}
           onDeleteAll={handleDeleteAll}
         />
     }
@@ -185,7 +185,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">
           <Logo size={24} />
-          <span>stilltime</span>
+          <span>Hours</span>
         </div>
         <nav className="nav">
           {NAV.map(({ label, icon: Icon }) => (
@@ -226,7 +226,7 @@ export default function App() {
 
       {settings && !settings.onboardingComplete && (
         <Onboarding onContinue={async () => {
-          await window.stilltime.completeOnboarding()
+          await window.hours.completeOnboarding()
           setSettings((current) => (current ? { ...current, onboardingComplete: true } : current))
         }} />
       )}

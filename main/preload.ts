@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { StilltimeBridge, TrackerStatus } from '../shared/types'
+import type { HoursBridge, TrackerStatus } from '../shared/types'
 
-const bridge: StilltimeBridge = {
+const bridge: HoursBridge = {
   getDashboard: (range, selectedDate) => ipcRenderer.invoke('dashboard:get', range, selectedDate),
   getAppDirectory: () => ipcRenderer.invoke('apps:list'),
   getAppIcon: (appId) => ipcRenderer.invoke('apps:icon', appId),
@@ -27,4 +27,4 @@ const bridge: StilltimeBridge = {
   },
 }
 
-contextBridge.exposeInMainWorld('stilltime', bridge)
+contextBridge.exposeInMainWorld('hours', bridge)

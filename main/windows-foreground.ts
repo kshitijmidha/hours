@@ -66,7 +66,7 @@ const FRIENDLY_NAMES: Record<string, string> = {
   mspaint: 'Paint',
   snippingtool: 'Snipping Tool',
   calculator: 'Calculator',
-  stilltime: 'Stilltime',
+  hours: 'Hours',
 }
 
 interface KoffiApi {
@@ -162,7 +162,7 @@ function loadKoffiApi(): KoffiApi | null {
       },
     }
   } catch (error) {
-    console.warn('[stilltime] Fast Win32 bindings unavailable, using PowerShell fallback:', error)
+    console.warn('[hours] Fast Win32 bindings unavailable, using PowerShell fallback:', error)
     cachedApi = null
   }
   return cachedApi
@@ -182,20 +182,20 @@ async function readViaPowerShell(): Promise<ForegroundWindowInfo | null> {
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
-public static class StilltimeWindow {
+public static class HoursWindow {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 }
 "@
 Add-Type -TypeDefinition $source -ErrorAction SilentlyContinue
-$handle = [StilltimeWindow]::GetForegroundWindow()
+$handle = [HoursWindow]::GetForegroundWindow()
 $processId = 0
-[void][StilltimeWindow]::GetWindowThreadProcessId($handle, [ref]$processId)
+[void][HoursWindow]::GetWindowThreadProcessId($handle, [ref]$processId)
 $p = Get-Process -Id $processId -ErrorAction SilentlyContinue
 if ($p) {
   $text = New-Object System.Text.StringBuilder 1024
-  [void][StilltimeWindow]::GetWindowText($handle, $text, $text.Capacity)
+  [void][HoursWindow]::GetWindowText($handle, $text, $text.Capacity)
   $path = ''
   try { $path = $p.Path } catch {}
   [PSCustomObject]@{ title = $text.ToString(); pid = $processId; exe = $p.ProcessName; path = $path } | ConvertTo-Json -Compress -Depth 3

@@ -66,7 +66,7 @@ export class BoundaryMonitor {
         notify('Downtime is on', `${this.store.getAppName(status.currentAppId)} is open. Your always-allowed apps stay available.`)
       }
     } catch (error) {
-      console.error('[stilltime] Could not check daily boundaries:', error)
+      console.error('[hours] Could not check daily boundaries:', error)
     } finally {
       this.checking = false
     }

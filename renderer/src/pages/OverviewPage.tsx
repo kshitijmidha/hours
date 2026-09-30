@@ -174,7 +174,7 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
             )}
           </>
         ) : data ? (
-          <EmptyState title="Nothing recorded yet" note="Stilltime runs quietly in your tray — activity appears within a minute of using any app." />
+          <EmptyState title="Nothing recorded yet" note="Hours runs quietly in your tray — activity appears within a minute of using any app." />
         ) : (
           <LoadingRows rows={5} />
         )}
