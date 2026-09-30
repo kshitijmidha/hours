@@ -17,6 +17,7 @@ export default defineConfig({
   renderer: {
     root: resolve(root, 'renderer'),
     plugins: [react(), tailwindcss()],
+    css: { postcss: { plugins: [] } },
     resolve: { alias: { '@shared': resolve(root, 'shared') } },
     build: {
       outDir: resolve(root, 'out/renderer'),
