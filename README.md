@@ -1,64 +1,64 @@
 # Stilltime
 
-Stilltime is a private, local-first screen time companion for Windows and macOS. It pairs a calm, Screen Time–inspired dashboard with a small background tracker. There are no accounts, cloud services, or telemetry.
+A calm, accurate, local-first screen time tracker for **Windows**. Stilltime lives in the tray, starts with Windows, and shows a Screen Time–inspired dashboard of where your day actually goes. No accounts, no cloud, no telemetry.
 
-## Run locally
+## Install (recommended)
 
-Requirements: Node.js 20 or newer and npm.
+1. Build the installer once: `npm install` then `npm run dist`.
+2. Run `release\Stilltime-Setup-2.0.0.exe` — it installs per-user (no admin prompt), creates Start Menu and desktop shortcuts, and starts Stilltime in the tray.
+3. From that point on, Stilltime **starts automatically with Windows** and tracks quietly in the background. You never need to launch it again manually. You can turn this off in **Settings → Start with Windows**.
+
+Closing the window hides it to the tray; tracking continues. Use the tray icon to open, pause, or quit. Uninstall normally from Windows Settings → Apps.
+
+## How tracking works (and why it's accurate)
+
+- The main process reads the foreground window **directly through Win32 APIs** (`user32.dll` / `kernel32.dll`) via [koffi](https://koffi.dev) — the same information Windows itself uses. No helper processes, no PowerShell polling.
+- It samples every 2 seconds and records one continuous session per foreground app, including the window title.
+- Counting stops the moment input stops: sessions end at your **last keyboard/mouse activity** when you go idle for 2 minutes, and immediately on **lock, sleep, or shutdown**. Sessions resume when you do.
+- Durations are computed from real `started_at`/`ended_at` overlap, so cross-midnight sessions are split correctly across hours and days.
+- The app is single-instance, and open sessions are repaired on startup, so a crash can never inflate or duplicate time.
+- Demo/sample sessions are marked in the database and in CSV exports, and can be removed with one click from the dashboard.
+
+## Run from source
+
+Requires Node.js 20+ and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-`npm install` rebuilds `better-sqlite3` for the bundled Electron runtime. A prebuilt binary is used when available. If it needs to compile from source on Windows, install Visual Studio Build Tools with **Desktop development with C++** and a Windows SDK.
-
-The first launch includes 14 days of clearly identified sample activity, so the dashboard is useful right away. Open **Settings → Refresh sample** to regenerate it. Use **Delete all data** to remove the sample and local activity.
-
-## What it tracks
-
-- Every two seconds, Stilltime reads the foreground app name, executable path, and window title.
-- Tracking pauses after two minutes without keyboard or mouse input, using Electron’s `powerMonitor` idle timer.
-- App sessions, categories, limits, downtime preferences, and settings are stored in a SQLite database under Electron’s local `userData` directory.
-- On Windows, the tracker uses `active-win` when its native binding is available and falls back to the Windows foreground-window API when it is not.
-- Closing the window hides Stilltime to the system tray. Use **Quit Stilltime** from the tray menu to stop it completely.
-
-The tracker records app/window metadata and time only. It does not capture screenshots or keystrokes. Demo sessions are marked in the CSV export.
-
-## Permissions
-
-### Windows
-
-No special permissions are required. Stilltime reads the foreground-window metadata and idle duration locally. The first-run welcome screen explains what is collected and where it stays.
-
-### macOS
-
-macOS may require **Screen Recording** and **Accessibility** access for foreground app/window metadata. Stilltime shows an onboarding explanation and links to the corresponding System Settings privacy panels. Grant access to the Stilltime app if macOS requests it; permission availability can vary by macOS release and app signing. If access is declined, the tracker keeps running and presents an empty/limited activity view rather than interrupting the app.
+`npm install` rebuilds `better-sqlite3` for Electron. koffi ships prebuilt N-API binaries and needs nothing extra.
 
 ## Features
 
-- Day and week usage with category-stacked charts, daily averages, app icons, and rule-based categories.
-- Manual category assignment for each app.
-- Per-app and per-category daily limits with local notifications at 80% and 100%.
-- Scheduled downtime notifications and an always-allowed app list. Downtime provides a reminder; it does not block apps.
-- Pause/resume tracking, light/dark/system appearance, launch-at-login, CSV export, and local data deletion.
+- **Overview** — total screen time with day/week navigation, comparison to your trailing 7-day average, 7-day mini trend, hourly/weekly stacked chart by category, most used apps with real icons, category breakdown.
+- **Apps** — every tracked app with time, executable path, and instant category reassignment.
+- **Categories** — six buckets (Productivity, Social, Entertainment, Development, Browsing, Other) filled by a rule-based classifier.
+- **Limits** — daily budgets per app or category with native notifications at 80% and 100%.
+- **Downtime** — a quiet window (e.g. 23:00–07:00) with gentle reminders, plus an always-allowed list. Nothing is blocked.
+- **Settings** — system/light/dark appearance synced to the Windows title bar, start with Windows, pause, sample data, CSV export, and full local data deletion.
 
-## Build and package
+## Data & privacy
+
+Everything is stored in a local SQLite database at `%APPDATA%\stilltime\stilltime.db` (WAL mode). Stilltime reads only the foreground app/window title and the system idle timer. It never captures screenshots or keystrokes, and makes no network requests at runtime.
+
+## Build & package
 
 ```bash
-npm run typecheck
-npm run build
-npm run dist
+npm run typecheck   # type-check main, preload, renderer
+npm run build       # production bundle into out/
+npm run icons       # regenerate build/icon.ico, icon.png, tray.png
+npm run dist        # Windows NSIS installer into release/
 ```
 
-`npm run dist` creates an NSIS installer on Windows and a DMG on macOS using electron-builder. Build each platform on its corresponding OS. Packaged output is written to `release/`.
+Packaging runs on Windows and produces `release\Stilltime-Setup-<version>.exe`.
 
 ## Project layout
 
 ```text
-main/       Electron main process, tracker, SQLite store, controls, typed IPC handlers
-renderer/   React + TypeScript interface, charts, styles
-shared/     Types shared across IPC and the renderer
+main/       Electron main process: Win32 foreground reader, tracker, SQLite store, controls, IPC
+renderer/   React + TypeScript UI (pages, components, styles)
+shared/     Types and theme constants shared across processes
+scripts/    Icon generation (no dependencies)
 ```
-
-All usage processing and persistence happen on-device. The app makes no network requests at runtime.
