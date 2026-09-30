@@ -11,6 +11,7 @@ let store: Store
 let tracker: ActivityTracker
 let boundaryMonitor: BoundaryMonitor
 let quitting = false
+const startHidden = process.argv.includes('--hidden')
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -29,7 +30,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.once('ready-to-show', () => { if (!startHidden) mainWindow?.show() })
   mainWindow.on('close', (event) => {
     if (!quitting) {
       event.preventDefault()
@@ -42,7 +43,7 @@ function createWindow() {
 
 function createTray() {
   // Small custom mark works at Windows notification-area sizes and avoids external assets.
-  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAJ0lEQVR4AWP4z8Dwn4GBgYHhP4P///8ZGBgYGJgYGBh+MDAw/A8AAG8JAwGqgVwAAAAASUVORK5CYII=')
+  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABM0lEQVR4nO2OW0tCURCF/ZmWdjXNzCKiiAiJSEQkIor+Xnax0i52sfcVOwg2Z/bM3iM6L7Xgezj7rJn5crn/CMlffmES6I5ejDBNxOMz5yNYwArMnn3CAlagcPoBC4LHiyfvsIQKdN5gCRGYaw+RgktqV4IIzLeGiOFH6qTsIgILzVdIZBPrxPYRgcXjF0iEEutI+6jA0TM4uMQ60k4isHT4BA4u2o4PEVhuDNglfrI99+2/pe4hAilDpYPBD9m3WCdJYGW/Lw64/79k31N6UYHy3iM0hKKZpwK7D9AQFFDME4HKzj00hKKZJwKr2z1o8aOdJQLVrR60+NHOEoG1zTuMg8s4c1SgfgtLiIBLrXYDC4LHXdar17CAFahXurCAFXDZKHcxTcTjRKZ0hUmgOvrn8g1eLLDXOdobQQAAAABJRU5ErkJggg==')
   tray = new Tray(icon)
   tray.setToolTip('Stilltime — keeping an eye on your screen time')
   const menu = Menu.buildFromTemplate([

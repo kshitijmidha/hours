@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { join } from 'node:path'
-import type { AppDirectoryEntry, AppLimit, CategoryName, ControlSnapshot, DashboardData, DowntimeSettings, LimitTargetType, TimeRange, TrackerStatus, UsageApp, UsageBucket } from '../shared/types'
+import type { AppDirectoryEntry, AppLimit, AppearancePreference, CategoryName, ControlSnapshot, DashboardData, DowntimeSettings, LimitTargetType, TimeRange, TrackerStatus, UsageApp, UsageBucket } from '../shared/types'
 
 export interface ActiveSession {
   id: number
@@ -400,6 +400,43 @@ export class Store {
       this.setSetting('demo_seeded', 'true')
     })
     clear()
+  }
+
+  getAppearance(): AppearancePreference {
+    const value = this.getSetting('appearance')
+    return value === 'light' || value === 'dark' ? value : 'system'
+  }
+
+  setAppearance(value: AppearancePreference) {
+    this.setSetting('appearance', value)
+  }
+
+  isOnboardingComplete() {
+    return this.getSetting('onboarding_complete') === 'true'
+  }
+
+  completeOnboarding() {
+    this.setSetting('onboarding_complete', 'true')
+  }
+
+  exportCsv() {
+    const rows = this.db.prepare(`
+      SELECT a.name AS app, a.executable_path AS executable, s.window_title AS title,
+        s.started_at AS started, s.ended_at AS ended, s.duration_seconds AS duration,
+        c.name AS category, s.is_demo AS demo
+      FROM sessions s JOIN apps a ON a.id = s.app_id JOIN categories c ON c.id = a.category_id
+      ORDER BY s.started_at
+    `).all() as Array<{ app: string; executable: string; title: string; started: string; ended: string | null; duration: number; category: string; demo: number }>
+    const field = (value: unknown) => {
+      const text = String(value ?? '')
+      const safe = /^[=+\-@]/.test(text) ? `'${text}` : text
+      return `"${safe.replace(/"/g, '""')}"`
+    }
+    const output = [
+      ['App', 'Executable path', 'Window title', 'Started at', 'Ended at', 'Duration (seconds)', 'Category', 'Sample data'].map(field).join(','),
+      ...rows.map((row) => [row.app, row.executable, row.title, row.started, row.ended ?? '', row.duration, row.category, row.demo ? 'yes' : 'no'].map(field).join(',')),
+    ]
+    return `\uFEFF${output.join('\r\n')}`
   }
 
   seedDemoData() {

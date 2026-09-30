@@ -43,7 +43,7 @@
     "files": ["out/**/*", "package.json"],
     "asarUnpack": ["node_modules/better-sqlite3/**/*"],
     "npmRebuild": false,
-    "win": { "target": "nsis" },
+    "win": { "target": "nsis", "signAndEditExecutable": false },
     "mac": { "target": "dmg", "category": "public.app-category.productivity" }
   }
 }

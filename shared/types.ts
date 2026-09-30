@@ -82,6 +82,17 @@ export interface ControlSnapshot {
   downtime: DowntimeSettings
 }
 
+export type AppearancePreference = 'system' | 'light' | 'dark'
+
+export interface AppSettings {
+  appearance: AppearancePreference
+  launchAtLogin: boolean
+  onboardingComplete: boolean
+  platform: string
+  screenRecording: string
+  accessibility: boolean
+}
+
 export interface AppDirectoryEntry {
   id: number
   name: string
@@ -101,6 +112,12 @@ export interface StilltimeBridge {
   setDowntime: (settings: DowntimeSettings) => Promise<void>
   setAlwaysAllowed: (appId: number, allowed: boolean) => Promise<void>
   deleteAllData: () => Promise<void>
+  getSettings: () => Promise<AppSettings>
+  setAppearance: (appearance: AppearancePreference) => Promise<void>
+  setLaunchAtLogin: (enabled: boolean) => Promise<void>
+  completeOnboarding: () => Promise<void>
+  openPrivacySettings: (kind: 'screen' | 'accessibility') => Promise<void>
+  exportCsv: () => Promise<boolean>
   setPaused: (paused: boolean) => Promise<void>
   onStatus: (callback: (status: TrackerStatus) => void) => () => void
 }

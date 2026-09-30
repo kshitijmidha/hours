@@ -7,7 +7,7 @@ import {
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { AppDirectoryEntry, CategoryName, ControlSnapshot, DashboardData, LimitTargetType, TimeRange, UsageApp } from '../../shared/types'
+import type { AppDirectoryEntry, AppSettings, AppearancePreference, CategoryName, ControlSnapshot, DashboardData, LimitTargetType, TimeRange, UsageApp } from '../../shared/types'
 
 type Section = 'Overview' | 'Apps' | 'Categories' | 'Limits' | 'Downtime' | 'Settings'
 const categoryNames: CategoryName[] = ['Productivity', 'Social', 'Entertainment', 'Development', 'Browsing', 'Other']
@@ -267,26 +267,55 @@ function DowntimePage({ controls, icons, onScheduleChange, onAllowChange }: {
   </>
 }
 
-function SettingsPage({ paused, onPause, onSeedDemo, onDeleteAll }: {
+function SettingsPage({ paused, onPause, onSeedDemo, onDeleteAll, settings, onAppearance, onLaunchAtLogin, onExport, onOpenPrivacy }: {
   paused: boolean
   onPause: () => void
   onSeedDemo: () => Promise<void>
   onDeleteAll: () => Promise<void>
+  settings: AppSettings | null
+  onAppearance: (appearance: AppearancePreference) => Promise<void>
+  onLaunchAtLogin: (enabled: boolean) => Promise<void>
+  onExport: () => Promise<boolean>
+  onOpenPrivacy: (kind: 'screen' | 'accessibility') => Promise<void>
 }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [exportMessage, setExportMessage] = useState('')
   const seedDemo = async () => { setBusy(true); await onSeedDemo(); setBusy(false) }
   const deleteAll = async () => { setBusy(true); await onDeleteAll(); setBusy(false); setConfirming(false) }
+  const exportData = async () => { const saved = await onExport(); setExportMessage(saved ? 'Your export is ready.' : 'Export cancelled.'); window.setTimeout(() => setExportMessage(''), 2600) }
   return <>
     <div className="subpage-heading"><div className="eyebrow"><span className="eyebrow-spark"><Settings2 size={12} /></span> YOUR SPACE</div><h1>Make it feel <em>like yours.</em></h1><p>Small choices, thoughtfully kept on your device.</p></div>
     <div className="settings-list">
+      <Card className="settings-preference-card"><div className="settings-preference-copy"><span className="settings-row-icon sample"><Sun size={15} /></span><div className="settings-row-copy"><strong>Appearance</strong><span>Follow your system, or choose the light your eyes like.</span></div></div><div className="appearance-options">{(['system', 'light', 'dark'] as AppearancePreference[]).map((value) => <button key={value} className={settings?.appearance === value ? 'selected' : ''} onClick={() => void onAppearance(value)}>{value === 'system' ? <Activity size={12} /> : value === 'light' ? <Sun size={12} /> : <Moon size={12} />}{value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}</button>)}</div></Card>
       <Card className="settings-row"><span className="settings-row-icon tracking"><Activity size={16} /></span><div className="settings-row-copy"><strong>Screen time tracking</strong><span>{paused ? 'Paused — your day is not being recorded.' : 'Running quietly in the background.'}</span></div><button className="settings-action-button" onClick={onPause}>{paused ? <><Play size={13} /> Resume</> : <><Pause size={13} /> Pause</>}</button></Card>
+      <Card className="settings-row"><span className="settings-row-icon sample"><Play size={15} /></span><div className="settings-row-copy"><strong>Launch at login</strong><span>Let Stilltime be there quietly when your computer starts.</span></div><button className={`switch ${settings?.launchAtLogin ? 'switch-on' : ''}`} role="switch" aria-checked={settings?.launchAtLogin ?? false} aria-label="Launch Stilltime at login" onClick={() => void onLaunchAtLogin(!settings?.launchAtLogin)}><i /></button></Card>
       <Card className="settings-row"><span className="settings-row-icon sample"><Sparkles size={16} /></span><div className="settings-row-copy"><strong>Sample activity</strong><span>Fill your dashboard with a believable two-week sample.</span></div><button className="settings-action-button" disabled={busy} onClick={() => void seedDemo()}><Activity size={13} /> Refresh sample</button></Card>
+      <Card className="settings-row"><span className="settings-row-icon tracking"><BarChart3 size={15} /></span><div className="settings-row-copy"><strong>Export your history</strong><span>Save your screen-time sessions as a spreadsheet-friendly CSV.</span></div><button className="settings-action-button" onClick={() => void exportData()}><ArrowDownRight size={13} /> Export CSV</button></Card>
       <Card className="settings-row danger-setting"><span className="settings-row-icon danger"><Trash2 size={15} /></span><div className="settings-row-copy"><strong>Delete all data</strong><span>Remove tracked sessions, apps, limits, and allowed apps from this device.</span></div><button className="danger-button" onClick={() => setConfirming(true)}><Trash2 size={13} /> Delete data</button></Card>
     </div>
-    <Card className="settings-privacy"><ShieldCheck size={16} /><div><strong>Private by design.</strong><span>Stilltime has no accounts, cloud sync, or telemetry. Your SQLite database stays in this computer’s local app data folder.</span></div></Card>
+    <Card className="settings-privacy"><ShieldCheck size={16} /><div><strong>Private by design.</strong><span>Stilltime has no accounts, cloud sync, or telemetry. Your SQLite database stays in this computer’s local app data folder.</span>{exportMessage && <small className="export-notice">{exportMessage}</small>}</div></Card>
+    <Card className="permissions-card"><div className="permissions-card-icon"><ShieldCheck size={16} /></div><div className="permissions-card-main"><strong>App access & permissions</strong>{settings?.platform === 'darwin' ? <><span>macOS may ask for Screen Recording and Accessibility access so Stilltime can read the active app and window title. Everything remains local.</span><div className="permission-actions"><button onClick={() => void onOpenPrivacy('screen')}>Screen Recording <span className={`permission-status ${settings.screenRecording === 'granted' ? 'granted' : ''}`}>{settings.screenRecording === 'granted' ? 'Granted' : 'Review'}</span></button><button onClick={() => void onOpenPrivacy('accessibility')}>Accessibility <span className={`permission-status ${settings.accessibility ? 'granted' : ''}`}>{settings.accessibility ? 'Granted' : 'Review'}</span></button></div></> : <span>No extra access is needed on Windows. Stilltime checks the foreground window and idle timer locally, then keeps the record in its on-device database.</span>}</div></Card>
     {confirming && <div className="modal-backdrop" role="presentation"><section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title"><span className="confirm-icon"><AlertTriangle size={19} /></span><h2 id="delete-title">Delete everything?</h2><p>Your activity history, app list, limits, and always-allowed apps will be removed from this device. This can’t be undone.</p><div className="confirm-actions"><button className="cancel-button" onClick={() => setConfirming(false)}>Keep my data</button><button className="danger-button" disabled={busy} onClick={() => void deleteAll()}><Trash2 size={13} /> Delete everything</button></div></section></div>}
   </>
+}
+
+function Onboarding({ settings, onContinue, onOpenPrivacy }: {
+  settings: AppSettings
+  onContinue: () => Promise<void>
+  onOpenPrivacy: (kind: 'screen' | 'accessibility') => Promise<void>
+}) {
+  const isMac = settings.platform === 'darwin'
+  const [busy, setBusy] = useState(false)
+  const complete = async () => { setBusy(true); await onContinue(); setBusy(false) }
+  return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+    <div className="onboarding-art"><div className="onboarding-orbit orbit-x" /><div className="onboarding-orbit orbit-y" /><div className="onboarding-logo"><Activity size={25} /></div><span className="onboarding-star star-x"><Sparkles size={12} /></span><span className="onboarding-star star-y"><span /></span></div>
+    <div className="onboarding-eyebrow"><ShieldCheck size={12} /> YOUR DEVICE. YOUR DATA.</div><h1 id="onboarding-title">A clearer view of<br /><em>your screen time.</em></h1><p className="onboarding-description">Stilltime quietly notes which app is in front every two seconds. No keystrokes, screenshots, accounts, or cloud — just a thoughtful view of where your time goes.</p>
+    <div className="onboarding-points"><div><span className="onboarding-point-icon"><Clock3 size={14} /></span><span><strong>Knows when you step away</strong><small>Tracking pauses after two idle minutes.</small></span></div><div><span className="onboarding-point-icon privacy"><ShieldCheck size={14} /></span><span><strong>Stays on this computer</strong><small>Your history lives in a local SQLite file.</small></span></div></div>
+    {isMac && <div className="onboarding-permissions"><strong>A small macOS permission, when you’re ready</strong><p>To read the foreground app and window title, macOS may ask for Screen Recording and Accessibility access. Stilltime never captures screen images or keystrokes.</p><div><button onClick={() => void onOpenPrivacy('screen')}>Review Screen Recording</button><button onClick={() => void onOpenPrivacy('accessibility')}>Review Accessibility</button></div></div>}
+    {!isMac && <div className="onboarding-permissions windows"><strong>No special permission needed on Windows</strong><p>Stilltime uses Windows’ foreground-window and idle-time information. You can pause tracking whenever you like.</p></div>}
+    <button className="onboarding-continue" disabled={busy} onClick={() => void complete()}>Let’s begin <ArrowRight size={15} /></button><span className="onboarding-foot"><i /> Offline, private, yours</span>
+  </section></div>
 }
 
 function ComingSoon({ section }: { section: Section }) {
@@ -304,11 +333,14 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(todayKey())
   const [data, setData] = useState<DashboardData | null>(null)
   const [controls, setControls] = useState<ControlSnapshot | null>(null)
+  const [settings, setSettings] = useState<AppSettings | null>(null)
   const [directory, setDirectory] = useState<AppDirectoryEntry[]>([])
   const [icons, setIcons] = useState<Record<number, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [paused, setPaused] = useState(false)
-  const [appearance, setAppearance] = useState<'light' | 'dark'>('light')
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
+  const appearance = settings?.appearance ?? 'system'
+  const isDark = appearance === 'dark' || (appearance === 'system' && systemDark)
 
   const refresh = useCallback(async () => {
     const next = await window.stilltime.getDashboard(range, selectedDate)
@@ -323,6 +355,13 @@ function App() {
 
   useEffect(() => { void refresh() }, [refresh])
   useEffect(() => { void refreshControls() }, [refreshControls])
+  useEffect(() => { void window.stilltime.getSettings().then(setSettings) }, [])
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const update = () => setSystemDark(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
   useEffect(() => window.stilltime.onStatus((status) => {
     setPaused(!status.tracking)
     void refresh()
@@ -366,6 +405,23 @@ function App() {
     await window.stilltime.setAlwaysAllowed(appId, allowed)
     await refreshControls()
   }
+  const handleAppearance = async (next: AppearancePreference) => {
+    await window.stilltime.setAppearance(next)
+    setSettings((current) => current ? { ...current, appearance: next } : current)
+  }
+  const handleLaunchAtLogin = async (enabled: boolean) => {
+    await window.stilltime.setLaunchAtLogin(enabled)
+    setSettings((current) => current ? { ...current, launchAtLogin: enabled } : current)
+  }
+  const handleCompleteOnboarding = async () => {
+    await window.stilltime.completeOnboarding()
+    setSettings((current) => current ? { ...current, onboardingComplete: true } : current)
+  }
+  const handleOpenPrivacy = async (kind: 'screen' | 'accessibility') => {
+    await window.stilltime.openPrivacySettings(kind)
+    window.setTimeout(() => { void window.stilltime.getSettings().then(setSettings) }, 2500)
+  }
+  const handleExport = () => window.stilltime.exportCsv()
   const handleSeedDemo = async () => {
     await window.stilltime.seedDemoData()
     setDirectory(await window.stilltime.getAppDirectory())
@@ -380,7 +436,7 @@ function App() {
   }
   const trackerText = paused ? 'Tracking paused' : data?.status.idle ? 'Taking a little break' : 'Tracking quietly'
 
-  return <div className={`app-shell theme-${appearance}`}>
+  return <div className={`app-shell theme-${isDark ? 'dark' : 'light'}`}>
     <aside className="sidebar">
       <div className="brand"><span className="brand-logo"><Activity size={17} strokeWidth={2.4} /></span><span>stilltime</span><span className="brand-edition">PRIVATE</span></div>
       <div className="nav-groups">{navItems.map(({ label, icon: Icon, group }, index) => <div key={label}>{group && <div className={`nav-group-label ${index > 0 ? 'nav-group-spaced' : ''}`}>{group}</div>}<button className={`nav-item ${section === label ? 'is-selected' : ''}`} onClick={() => setSection(label)}><span className="nav-icon"><Icon size={16} strokeWidth={section === label ? 2.2 : 1.8} /></span><span>{label}</span>{label === 'Limits' && <span className="nav-soon">NEW</span>}</button></div>)}</div>
@@ -389,7 +445,7 @@ function App() {
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="topbar-left"><span className="breadcrumb">Your time</span><span className="breadcrumb-slash">/</span><strong>{section}</strong></div><div className="topbar-right"><span className="private-pill"><i /> Private by design</span><button className="appearance-toggle" aria-label="Toggle appearance" onClick={() => setAppearance(appearance === 'light' ? 'dark' : 'light')}>{appearance === 'light' ? <Moon size={15} /> : <Sun size={15} />}</button><span className="top-avatar">S</span></div></header>
+      <header className="topbar"><div className="topbar-left"><span className="breadcrumb">Your time</span><span className="breadcrumb-slash">/</span><strong>{section}</strong></div><div className="topbar-right"><span className="private-pill"><i /> Private by design</span><button className="appearance-toggle" aria-label="Change appearance" title={`Appearance: ${appearance}`} onClick={() => void handleAppearance(appearance === 'dark' ? 'system' : 'dark')}>{isDark ? <Sun size={15} /> : <Moon size={15} />}</button><span className="top-avatar">S</span></div></header>
       <div className={`content-wrap ${section !== 'Overview' ? 'content-wrap-subpage' : ''}`}>
         {loading && !data ? <div className="page-skeleton"><span className="skeleton skeleton-title" /><span className="skeleton skeleton-hero" /><span className="skeleton skeleton-chart" /></div> : null}
         {section === 'Overview' && <Overview data={data} range={range} selectedDate={selectedDate} setRange={setRange} setSelectedDate={setSelectedDate} icons={icons} />}
@@ -397,10 +453,11 @@ function App() {
         {section === 'Categories' && <CategoriesPage data={data} directory={directory} />}
         {section === 'Limits' && <LimitsPage controls={controls} onSave={handleLimitSave} onRemove={handleLimitRemove} />}
         {section === 'Downtime' && <DowntimePage controls={controls} icons={icons} onScheduleChange={handleDowntimeChange} onAllowChange={handleAlwaysAllowed} />}
-        {section === 'Settings' && <SettingsPage paused={paused} onPause={() => void window.stilltime.setPaused(!paused)} onSeedDemo={handleSeedDemo} onDeleteAll={handleDeleteAll} />}
+        {section === 'Settings' && <SettingsPage paused={paused} onPause={() => void window.stilltime.setPaused(!paused)} onSeedDemo={handleSeedDemo} onDeleteAll={handleDeleteAll} settings={settings} onAppearance={handleAppearance} onLaunchAtLogin={handleLaunchAtLogin} onExport={handleExport} onOpenPrivacy={handleOpenPrivacy} />}
         <footer className="page-footer"><span>Made for a little more mindful time.</span><span><ShieldCheck size={12} /> Your day, stored locally</span></footer>
       </div>
     </main>
+    {settings && !settings.onboardingComplete && <Onboarding settings={settings} onContinue={handleCompleteOnboarding} onOpenPrivacy={handleOpenPrivacy} />}
   </div>
 }
 

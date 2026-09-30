@@ -56,25 +56,31 @@ export class ActivityTracker {
   private listeners = new Set<(status: TrackerStatus) => void>()
   private lastStatusPush = 0
   private polling = false
+  private lifecycle = 0
 
   constructor(private store: Store) {}
 
   start() {
-    void this.poll()
-    this.timer = setInterval(() => void this.poll(), POLL_INTERVAL_MS)
+    if (this.timer) return
+    const lifecycle = ++this.lifecycle
+    void this.poll(lifecycle)
+    this.timer = setInterval(() => void this.poll(this.lifecycle), POLL_INTERVAL_MS)
   }
 
   stop() {
+    this.lifecycle++
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
     this.closeActive()
+    this.emit(true)
   }
 
   setPaused(paused: boolean) {
     if (this.paused === paused) return
     this.paused = paused
+    this.lifecycle++
     if (paused) this.closeActive()
-    else void this.poll()
+    else void this.poll(this.lifecycle)
     this.emit(true)
   }
 
@@ -88,7 +94,7 @@ export class ActivityTracker {
     return snapshot.status
   }
 
-  private async poll() {
+  private async poll(lifecycle = this.lifecycle) {
     if (this.paused || this.polling) return
     this.polling = true
     try {
@@ -100,12 +106,14 @@ export class ActivityTracker {
         return
       }
       this.idle = false
-      // active-win is ESM-only; load lazily so Electron can start immediately.
+      // Load lazily so Electron can start even if the optional native module is unavailable.
       const { default: activeWin } = await import('active-win')
       let active = await activeWin() as ActiveWindowInfo | undefined
+      if (this.paused || this.lifecycle !== lifecycle) return
       // active-win ships a native addon which can be unavailable in unsigned/dev builds.
       // Use the Windows foreground-window API as a transparent local fallback.
       if (!active && process.platform === 'win32') active = await readWindowsActiveWindow()
+      if (this.paused || this.lifecycle !== lifecycle) return
       if (!active?.owner?.name) {
         this.closeActive()
         this.emit()
@@ -115,7 +123,7 @@ export class ActivityTracker {
       const executablePath = active.owner.path || `unknown:${name.toLowerCase()}`
       const appId = this.store.upsertApp(name, executablePath)
       const title = active.title || ''
-      if (!this.activeSession || this.activeSession.appId !== appId) {
+      if (!this.activeSession || this.activeSession.appId !== appId || this.currentTitle !== title) {
         this.closeActive()
         this.activeSession = this.store.startSession(appId, title)
       } else {

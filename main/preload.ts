@@ -12,6 +12,12 @@ const bridge: StilltimeBridge = {
   setDowntime: (settings) => ipcRenderer.invoke('downtime:set', settings),
   setAlwaysAllowed: (appId, allowed) => ipcRenderer.invoke('downtime:allow', appId, allowed),
   deleteAllData: () => ipcRenderer.invoke('data:delete'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setAppearance: (appearance) => ipcRenderer.invoke('settings:appearance', appearance),
+  setLaunchAtLogin: (enabled) => ipcRenderer.invoke('settings:launch-at-login', enabled),
+  completeOnboarding: () => ipcRenderer.invoke('settings:onboarding-complete'),
+  openPrivacySettings: (kind) => ipcRenderer.invoke('settings:open-privacy', kind),
+  exportCsv: () => ipcRenderer.invoke('data:export-csv'),
   setPaused: (paused) => ipcRenderer.invoke('tracker:pause', paused),
   onStatus: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, status: TrackerStatus) => callback(status)
