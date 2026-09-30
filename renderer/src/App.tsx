@@ -201,10 +201,15 @@ export default function App() {
             <span>Settings</span>
           </button>
           <div className="side-status">
-            <i className={`side-status-dot ${paused || status?.idle || !status?.currentApp ? 'is-off' : ''}`} />
-            <span className="side-status-name">{paused ? 'Tracking paused' : status?.idle ? 'Away' : status?.currentApp ?? 'Ready'}</span>
+            <i className={`side-status-dot ${paused ? 'is-off' : ''}`} />
+            <span className="side-status-name">{paused ? 'Tracking paused' : status?.idle ? 'Away' : status?.currentApp ?? 'Tracking'}</span>
             <span className="side-status-time">{formatDuration(status?.todaySeconds ?? 0)}</span>
-            <button className="icon-button" onClick={togglePause} aria-label={paused ? 'Resume tracking' : 'Pause tracking'}>
+            <button
+              className="icon-button"
+              onClick={togglePause}
+              aria-label={paused ? 'Resume tracking' : 'Pause tracking'}
+              title={paused ? 'Resume tracking' : 'Pause tracking'}
+            >
               {paused ? <Play size={13} /> : <Pause size={13} />}
             </button>
           </div>

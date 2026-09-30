@@ -45,12 +45,18 @@ export function SegmentedControl({ value, onChange }: { value: TimeRange; onChan
   )
 }
 
-export function DateStepper({ label, onBack, onForward, forwardDisabled }: { label: string; onBack: () => void; onForward: () => void; forwardDisabled: boolean }) {
+export function DateStepper({ label, onBack, onForward, forwardDisabled, unitLabel = 'period' }: {
+  label: string
+  onBack: () => void
+  onForward: () => void
+  forwardDisabled: boolean
+  unitLabel?: string
+}) {
   return (
     <div className="stepper">
-      <button onClick={onBack} aria-label="Previous period"><ArrowLeft size={14} /></button>
+      <button onClick={onBack} aria-label={`Previous ${unitLabel}`} title={`Previous ${unitLabel}`}><ArrowLeft size={14} /></button>
       <span>{label}</span>
-      <button onClick={onForward} disabled={forwardDisabled} aria-label="Next period"><ArrowRight size={14} /></button>
+      <button onClick={onForward} disabled={forwardDisabled} aria-label={`Next ${unitLabel}`} title={`Next ${unitLabel}`}><ArrowRight size={14} /></button>
     </div>
   )
 }
@@ -95,11 +101,12 @@ export function DeltaChip({ tone }: { tone: 'above' | 'below' | 'even' }) {
   return <span className={`delta-chip delta-${tone}`}><Icon size={12} /></span>
 }
 
-export function Metric({ label, value }: { label: string; value: string }) {
+export function Metric({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="metric">
       <span>{label}</span>
       <strong>{value}</strong>
+      {note && <small>{note}</small>}
     </div>
   )
 }

@@ -97,7 +97,7 @@ export function LimitsPage({ controls, onSave, onRemove }: {
                     <ProgressBar percent={limit.percent} color={color} height={4} />
                   </div>
                   <span className={`limit-percent ${limit.percent >= 80 ? 'is-near' : ''}`}>{limit.percent}<small>%</small></span>
-                  <button className="ghost-danger" onClick={() => void onRemove(limit)} aria-label={`Remove limit for ${limit.targetName}`}><Trash2 size={14} /></button>
+                  <button className="ghost-danger" onClick={() => void onRemove(limit)} aria-label={`Remove limit for ${limit.targetName}`} title="Remove limit"><Trash2 size={14} /></button>
                 </div>
               )
             })}

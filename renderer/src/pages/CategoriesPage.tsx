@@ -17,7 +17,7 @@ export function CategoriesPage({ data, directory }: { data: DashboardData | null
                 <span className="category-dot" style={{ background: color }} />
                 <span className="category-tile-name">{name}</span>
               </div>
-              <span className="category-tile-time">{formatDuration(usage?.seconds ?? 0)}</span>
+              <span className="category-tile-time">{usage?.seconds ? formatDuration(usage.seconds) : '—'}</span>
               <ProgressBar percent={usage?.percent ?? 0} color={color} height={4} />
               <small>{usage?.seconds ? `${usage.percent}% of your ${data?.range === 'week' ? 'week' : 'day'} · ${appCount} ${appCount === 1 ? 'app' : 'apps'}` : `${appCount} ${appCount === 1 ? 'app' : 'apps'}`}</small>
             </div>

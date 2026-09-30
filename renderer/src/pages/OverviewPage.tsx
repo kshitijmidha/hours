@@ -95,6 +95,7 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
   }), [data])
 
   const delta = data ? comparison(data.totalSeconds, data.averageSeconds) : null
+  const emptyPeriod = Boolean(data && data.totalSeconds === 0 && data.averageSeconds === 0)
   const maxAppSeconds = data?.apps[0]?.seconds ?? 0
   const topCategories = data?.categories.filter((item) => item.seconds > 0) ?? []
   const hasActivity = Boolean(data && data.totalSeconds > 0)
@@ -108,6 +109,7 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
           onBack={() => onDateChange(shiftDate(selectedDate, range === 'day' ? -1 : -7))}
           onForward={() => onDateChange(shiftDate(selectedDate, range === 'day' ? 1 : 7))}
           forwardDisabled={forwardDisabled}
+          unitLabel={range === 'day' ? 'day' : 'week'}
         />
         <SegmentedControl value={range} onChange={onRangeChange} />
       </PageHeader>
@@ -126,17 +128,24 @@ export function OverviewPage({ data, range, selectedDate, icons, onRangeChange, 
           ) : (
             <div className="hero-time skeleton skeleton-hero-time" />
           )}
-          <div className={`hero-delta tone-${delta?.tone ?? 'even'}`}>
-            <DeltaChip tone={delta?.tone ?? 'even'} />
-            <span>{delta?.text ?? '—'}</span>
-          </div>
+          {emptyPeriod ? (
+            <div className="hero-delta"><span>No activity recorded yet</span></div>
+          ) : (
+            <div className={`hero-delta tone-${delta?.tone ?? 'even'}`}>
+              <DeltaChip tone={delta?.tone ?? 'even'} />
+              <span>{delta?.text ?? '—'}</span>
+            </div>
+          )}
         </div>
         {data ? <TrendBars data={data} /> : <span className="skeleton skeleton-strip" />}
       </section>
 
       <div className="metrics">
-        <Metric label="7-DAY AVERAGE" value={data ? formatDuration(data.averageSeconds) : '—'} />
-        <Metric label="APPS USED" value={data ? `${data.appCount}` : '—'} />
+        <Metric
+          label="7-DAY AVERAGE"
+          value={data && data.averageSeconds > 0 ? formatDuration(data.averageSeconds) : '—'}
+          note={!data ? undefined : data.averageSeconds > 0 ? 'Across the last 7 days' : 'No history yet — tracking starts now'}
+        />
       </div>
 
       <section className="section">
